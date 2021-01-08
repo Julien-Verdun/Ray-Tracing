@@ -40,7 +40,7 @@ Ainsi on obtient la Figure représentée ci-dessous. La sphère est bien représ
 
 **Remarque :** avec cette méthode assez primitive, il n'est pas possible d'observer le volume de la sphère, ainsi que les ombres créées par la lumière.
 
-![raytracer_intensite_nulle](Figures\raytracer_intensite_nulle.png)
+![raytracer_intensite_nulle](Figures/raytracer_intensite_nulle.png)
 
 Les classes implémentées sont les suivantes :
 
@@ -66,7 +66,7 @@ avec :
 
 Ainsi on obtient la Figure représentée ci-dessous. La sphère, représentée avec un albedo rouge, est bien représentée en rouge et le reste en noir. On peut cette fois mieux apprécier le volume de la sphère et on peut clairement identifier la localisation de la source de lumière grâce aux différences d'intensiter lumineuses (les ombres sont mieux représentés). Ce raytracer est plus performant que la version précédente.
 
-![raytracer_avec_intensite](Figures\raytracer_avec_intensite.png)
+![raytracer_avec_intensite](Figures/raytracer_avec_intensite.png)
 
 ### Création d'une scène
 
@@ -86,7 +86,7 @@ On réalise un essai en créant une scène composée de :
 Les murs sont représentés par des sphéres de très grand rayon et de centre très éloigné.
 Le résultat obtenu est présenté sur la Figure ci-dessous :
 
-![raytracer_plusieurs_spheres](Figures\raytracer_plusieurs_spheres.png)
+![raytracer_plusieurs_spheres](Figures/raytracer_plusieurs_spheres.png)
 
 **Remarque** : Le résultat est assez satisfaisant, toutefois certaines améliorations sont possibles :
 
