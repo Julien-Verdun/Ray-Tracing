@@ -105,7 +105,7 @@ avec &gamma; = 2,2 et 1/&gamma; = 0,45.
 
 La correction Gamma permet d'obtenir le résultat ci-dessous. La luminosité des pixels représentant les murs est plus importante. Le rendu est meilleur.
 
-![raytracer_correction_gamma](Figures\raytracer_correction_gamma.png)
+![raytracer_correction_gamma](Figures/raytracer_correction_gamma.png)
 
 ### Ombres portées
 
@@ -115,13 +115,13 @@ La stratégie est la suivante. On envoie des rayons dans toutes les directions (
 
 On obtient un premier résultat présenté sur la Figure ci-dessous. On remarque que les ombres sont bien présentes, toutefois, l'image est très bruitée.
 
-![raytracer_shadow_and_noise](Figures\raytracer_shadow_and_noise.png)
+![raytracer_shadow_and_noise](Figures/raytracer_shadow_and_noise.png)
 
 Le bruit s'explique par les incertitudes de calcul dû à la précision numérique de la machine. Ainsi, le point d'intersection se retrouve dans la surface au lieu d'être sur la surface. Pour éviter cela, on déplace le point d'intersection d'une petite quantité &epsilon; vers l'extérieur de l'objet.
 
 Avec cette légère modification, on obtient le résultat présenté ci-dessous, le bruit n'est plus présent et les ombres sont bien visibles.
 
-![raytracer_avec_shadow](Figures\raytracer_avec_shadow.png)
+![raytracer_avec_shadow](Figures/raytracer_avec_shadow.png)
 
 ### Surfaces miroir
 
@@ -139,11 +139,11 @@ Le rayon incident **i** est réfléchi par la surface miroir en un rayon **r** t
 
 On remplace la sphère centrale des scènes précédentes par une surface miroir. On obtient le résultat ci-dessous.
 
-![raytracer_mirror_noise](Figures\raytracer_mirror_noise.png)
+![raytracer_mirror_noise](Figures/raytracer_mirror_noise.png)
 
 On rencontre le même problème que précédemment, du bruit est présent sur la surface dû aux erreurs numériques. Le résultat après correction est le suivant.
 
-![raytracer_mirror](Figures\raytracer_mirror.png)
+![raytracer_mirror](Figures/raytracer_mirror.png)
 
 La sphère centrale permet bien de refléter le mur derrière l'écran, le mur magenta et les sphères et murs environnants.
 
@@ -167,7 +167,7 @@ Connaissant la direction du rayon tranmis par la surface transarente, il est alo
 
 On modifie la sphère de droite (sphère rouge) en une surface transparente. On obtient le résultat présenté sur la Figure ci-dessous. La sphère est bien transparente et laisse apparaître avec une inversion de la direction les murs de droite et du fond.
 
-![raytracer_transparent](Figures\raytracer_transparent.png)
+![raytracer_transparent](Figures/raytracer_transparent.png)
 
 Une autre représentation est visible ci-dessous en remplaçant le sol par un miroir.
 On calcule le temps nécessaire pour créer cette scène. L'algorithme donne les performances suivantes :
@@ -175,7 +175,7 @@ On calcule le temps nécessaire pour créer cette scène. L'algorithme donne les
 - 0.918 seconde pour générer l'image sans le sol en miroir
 - 1.137 secondes pour générer l'image avec le sol en miroir.
 
-![raytracer_transparent_sol_mirroir](Figures\raytracer_transparent_sol_mirroir.png)
+![raytracer_transparent_sol_mirroir](Figures/raytracer_transparent_sol_mirroir.png)
 
 ### Transmission de Fresnel
 
@@ -195,15 +195,15 @@ La **première stratégie** consiste à calculer la valeur d'un pixel transparen
 
 Les résultats de cette méthode sont très concluants puisqu'en moins de 2 secondes, les deux images ci-dessous sont générées avec un rendu proche de la réalité.
 
-![raytracer_fresnel_gourmand](Figures\raytracer_fresnel_gourmand.png)
+![raytracer_fresnel_gourmand](Figures/raytracer_fresnel_gourmand.png)
 
-![raytracer_fresnel_gourmand_sol_mirror](Figures\raytracer_fresnel_gourmand_sol_mirror.png)
+![raytracer_fresnel_gourmand_sol_mirror](Figures/raytracer_fresnel_gourmand_sol_mirror.png)
 
 La **deuxième stratégie** consiste à calculer la valeur d'un pixel transparent en faisant une moyenne de plusieurs chemins complets pour lesquels à chaque intersection avec une surface transparente, on choisit aléatoirement d'émettre un rayon réfléchi ou réfracté, en générant un nombre entre 0 et 1, et en le comparant au coefficient R. Si le nombre généré est inférieur à R, le rayon sera réfléchi, sinon il sera réfracté.
 
 Les résultats de cette méthode semble un peu moins performant. en effet, en générant et moyennant la valeur du pixel pour 30 rayons complets, on obtient le résultat ci-dessous. La qualité de la transparence est moins importante qu'avec la première méthode, on observe un léger bruit. De plus, le temps pour générer l'image est plus grand avec environ 6 secondes pour 10 rayons et 20 secondes pour 30 rayons.
 
-![raytracer_fresnel_30_tirages](Figures\raytracer_fresnel_30_tirages.png)
+![raytracer_fresnel_30_tirages](Figures/raytracer_fresnel_30_tirages.png)
 
 # TO-DO :
 
