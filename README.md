@@ -1,12 +1,35 @@
 # MOS 2.2 - Informatique Graphique
 
+## Table of contents
+
+I. [Ray Tracing](#raytracing)
+
+1. [Ray Tracing primitif](#raytracingprimitif)
+2. [Ajout de l'intensité lumineuse](#intensitelumineuse)
+3. [Création d'une scène](#scenecreation)
+4. [Correction Gamma](#correctiongamma)
+5. [Ombres portées](#ombresportees)
+6. [Surfaces miroir](#surfacesmiroir)
+7. [Surfaces transparents](#surfacestransparentes)
+8. [Transmission de Fresnel](#fresnel)
+9. [Eclairage indirect](#eclairageindirect)
+
+   a) [Generation de nombre aléatoire](#randomnumber)
+
+   b) [Résultat de l'éclairage indirect](#resulteclairageindirect)
+
+10. [Parallélisation des calculs](#parallelisation)
+11. [Crénelage](#crenelage)
+
+II. [Feedback sur le MOS](#feedback)
+
 Enseignant : Nicolas Bonneel
 
 Etudiant : Julien Verdun
 
 Date : 06/01/2021
 
-## Ray Tracing
+## Ray Tracing <a name="raytracing"></a>
 
 Le ray tracing est une technique de calcul d'optique par ordinateur, utilisée pour le rendu en synthèse d'image ou pour des études de systèmes optiques
 
@@ -14,7 +37,7 @@ On décrit dans cette partie l'implémentation d'un algorithme de **Ray Tracing*
 
 Le fichier `raytracer.cpp` contient les classes **C++** et le **main** nécessaires pour créer les images présentées plus bas.
 
-### Ray Tracing primitif
+### Ray Tracing primitif <a name="raytracingprimitif"></a>
 
 Le premier Raytracer implémenté est très rudimentaire.
 
@@ -48,7 +71,7 @@ Les classes implémentées sont les suivantes :
 - une classe **Sphere** : elle contient le centre et le rayon de la sphère
 - une classe **Ray** : elle contient un point du rayon et son vecteur directeur.
 
-### Ajout de l'intensité lumineuse
+### Ajout de l'intensité lumineuse <a name="intensitelumineuse"></a>
 
 On change ici la couleur attribuée à un pixel de la caméra afin d'obtenir du contraste et de discerner les volumes des objets.
 
@@ -68,7 +91,7 @@ Ainsi on obtient la Figure représentée ci-dessous. La sphère, représentée a
 
 ![raytracer_avec_intensite](Figures/raytracer_avec_intensite.png)
 
-### Création d'une scène
+### Création d'une scène <a name="scenecreation"></a>
 
 On désire à présent **complexifier la scène observée**. Jusqu'à présent, seul une sphère était placée devant la caméra.
 
@@ -93,7 +116,7 @@ Le résultat obtenu est présenté sur la Figure ci-dessous :
 - les ombres des sphères ne sont pas projetées sur les murs alentours
 - la luminosité de la lumière sur les murs est très faible, leur couleur n'est pas très bien perceptible.
 
-### Correction Gamma
+### Correction Gamma <a name="correctiongamma"></a>
 
 On se propose ici d'améliorer le contraste des objets. En effet, sur la dernière scène obtenue, nous avons relevé la faible luminosité des murs en arrière plan.
 
@@ -107,7 +130,7 @@ La correction Gamma permet d'obtenir le résultat ci-dessous. La luminosité des
 
 ![raytracer_correction_gamma](Figures/raytracer_correction_gamma.png)
 
-### Ombres portées
+### Ombres portées <a name="ombresportees"></a>
 
 On souhaite encore améliorer le rendu en ajoutant les **ombres portées**, c'est-à-dire les ombres des objets projetées sur les surfaces.
 
@@ -123,7 +146,7 @@ Avec cette légère modification, on obtient le résultat présenté ci-dessous,
 
 ![raytracer_avec_shadow](Figures/raytracer_avec_shadow.png)
 
-### Surfaces miroir
+### Surfaces miroir <a name="surfacesmiroir"></a>
 
 Les surfaces représentées jusqu'à présent sont des surfaces opaques qui possèdent un albédo. On se propose ici de représenter un autre type de surface, les **surfaces miroir**.
 
@@ -147,7 +170,7 @@ On rencontre le même problème que précédemment, du bruit est présent sur la
 
 La sphère centrale permet bien de refléter le mur derrière l'écran, le mur magenta et les sphères et murs environnants.
 
-### Surfaces transparents
+### Surfaces transparents <a name="surfacestransparentes"></a>
 
 On se propose ici de représenter un autre type de surface, les **surfaces transparentes**.
 
@@ -159,11 +182,11 @@ n<sub>1</sub> sin(&theta;<sub>i</sub>) = n<sub>2</sub> sin(&theta;<sub>t</sub>)
 
 Grâce à cette loi, on peut exprimer les composantes tangentielle et normale du vecteur unitaire directeur du rayon transmis **T** :
 
-**T<sub>N</sub>** = - sqrt(1 - (n<sub>1</sub>/n<sub>2</sub>)<sup>2</sup>(1-<**i**,**N**><sup>2</sup>)) **N**
+**T<sub>N</sub>** = - &radic;(1 - (n<sub>1</sub>/n<sub>2</sub>)<sup>2</sup>(1-<**i**,**N**><sup>2</sup>)) **N**
 
 **T<sub>T</sub>** = n<sub>1</sub>/n<sub>2</sub> (**i** - <**i**,**N**>**N**)
 
-Connaissant la direction du rayon tranmis par la surface transarente, il est alors possible de connaître la couleure du pixel à afficher en cherchant l'intersection de ce rayon avec le reste de la scène.
+Connaissant la direction du rayon tranmis par la surface transparente, il est alors possible de connaître la couleure du pixel à afficher en cherchant l'intersection de ce rayon avec le reste de la scène.
 
 On modifie la sphère de droite (sphère rouge) en une surface transparente. On obtient le résultat présenté sur la Figure ci-dessous. La sphère est bien transparente et laisse apparaître avec une inversion de la direction les murs de droite et du fond.
 
@@ -177,7 +200,7 @@ On calcule le temps nécessaire pour créer cette scène. L'algorithme donne les
 
 ![raytracer_transparent_sol_mirroir](Figures/raytracer_transparent_sol_mirroir.png)
 
-### Transmission de Fresnel
+### Transmission de Fresnel <a name="fresnel"></a>
 
 Lors de la transmission d'un rayon par une surface transparente, une partie du rayon est en réalité réfléchie par la surface, selon les lois de Fresnel.
 
@@ -205,7 +228,114 @@ Les résultats de cette méthode semble un peu moins performant. en effet, en g�
 
 ![raytracer_fresnel_30_tirages](Figures/raytracer_fresnel_30_tirages.png)
 
-# TO-DO :
+### Eclairage indirect <a name="eclairageindirect"></a>
 
-- mettre un feedback sur le cours (si a aimé, si deja codé en c++, si c'était difficile, intéressant, etc)
-- faire une table des matières
+Avec le pathtracer actuel, les surfaces avec un éclairage rasant possèdent une faible intensité lumineuse.
+
+En réalité, les surfaces environnentes réflechissent une partie de la lumière pour éclairer ces surfaces "rasantes" et ainsi augmenter la quantité de lumière observée. Ainsi les surfaces se comportent comme des sources de lumière secondaires. On parle d'**éclairage indirect**.
+
+L'idée est la suivante. On considère que chaque rayon qui arrive sur un pixel de la caméra est la combinaison de la lumière réfléchie par la source lumineuse ponctuelle sur la surface intersectée, plus une quantité de lumière qui provient de la réflection d'autres rayons sur des surfaces.
+
+La première quantité est celle que l'on calcule déjà.
+
+La deuxième se calcule avec l'intégrale sur la demi-sphère S<sup>+</sup> de la quantité :
+
+&int; f(**w<sub>i</sub>** , **w<sub>o</sub>**) . L(**w<sub>i</sub>**) . <**N**,**w<sub>i</sub>**> . d<sub>w<sub>i</sub></sub>
+
+avec f la **BRDF** (Bidirectional Reflectance Distribution Function) fonction telle que :
+
+- f &ge; 0
+- f(**w<sub>i</sub>** , **w<sub>o</sub>**) = f(**w<sub>o</sub>**,**w<sub>i</sub>**) (condition de réciprocité)
+- &int; f(**w<sub>i</sub>** , **w<sub>o</sub>**) . cos(**w<sub>i</sub>**) d<sub>w<sub>i</sub></sub> &le; 1 pour tout **w<sub>o</sub>** (conservation de l'énergie).
+
+Le calcul de l'intensité lumineuse sur un pixel de l'écran constitue une équation de Fredholm du 2<sup>ème</sup> type. En effet, le calcul de l'intensité d'un rayon nécessite le calcul de l'intensité d'un autre rayon.  
+Il est ainsi possible de calculer l'émission du rayon arrivant sur l'écran en se limitant à un nombre de rebonds, par exemple **5 rebonds**, et en calculant récursivement l'intensité du rayon. Cela reprend ce qui a été fait pour les mirroirs et les surfaces transparentes.
+
+La problématique est ici le fait qu'un nombre infini de rayon sont la cause de l'éclairage indirect, or pour des raisons évidentes de performance, il n'est pas possible de tous les prendre en compte. Ainsi, on se limite à un rayon par surface.
+
+Le rayon **w<sub>i</sub>** est dirigé par les vecteurs **N**, **T1** et **T2** tel que :
+
+**w<sub>i</sub>** = z.**N** + x.**T<sub>1</sub>** + y.**T<sub>2</sub>**
+
+avec :
+
+- x = cos(2.&pi;.r<sub>1</sub>) &radic;(1-r<sub>2</sub>)
+- y = sin(2.&pi;.r<sub>1</sub>) &radic;(1-r<sub>1</sub>)
+- z = &radic;(r<sub>2</sub>)
+
+avec **z** dirigé par **N** puis
+
+**T1** est calculé selon la valeur minimale de **N** afin de s'assurer que l'on ait pas **N** = (0,0,1) et ainsi **T** = **0** :
+
+- **T1** = (-N<sub>y</sub>,N<sub>x</sub>,0) si N<sub>z</sub> est minimale
+- **T1** = (N<sub>z</sub>,0,-N<sub>x</sub>) si N<sub>y</sub> est minimale
+- **T1** = (0,-N<sub>z</sub>,N<sub>y</sub>) si N<sub>x</sub> est minimale
+
+et **T2** = **N**&#10799;**T1**
+
+Le calcul d'un seul rayon indirect par surface est amélioré en générant un certain nombre de rayons par pixel de l'écran, par exemple 100 rayons, qui se propagent différements (de manière aléatoire) et dont on moyenne les intensités lumineuses afin d'espérer obtenir l'intensité moyenne du pixel.
+
+#### Generation de nombre aléatoire <a name="randomnumber"></a>
+
+La génération de nombre aléatoire est réalisée en utilisant la **formule de Box Muller**.
+
+On génère deux nombres aléatoires u<sub>1</sub> et u<sub>2</sub> suivant une loi uniforme sur [0,1]
+puis on calcule deux nombres aléatoires :
+
+x<sub>1</sub> = &sigma; . cos(2 &pi; u<sub>1</sub>) . &radic;(-2 log(u<sub>2</sub>))
+
+x<sub>2</sub> = &sigma; . sin(2 &pi; u<sub>1</sub>) . &radic;(-2 log(u<sub>2</sub>))
+
+x<sub>1</sub> et x<sub>2</sub> suivent alors une loi Gaussienne d'écart-type &sigma;.
+
+#### Résultat de l'éclairage indirect <a name="resulteclairageindirect"></a>
+
+Les résultats ci-dessous présentent le résultats de l'implémentation de l'éclairage indirect.
+
+Avec un seul rayon indirect généré aléatoirement par surface, on obtient le résultat ci-dessous en environ 1 seconde. L'image semble bruitée, le résultat n'est pas suffisament performant.
+
+![raytracer_eclairage_indirect_1_rayon](Figures/raytracer_eclairage_indirect_1_rayon.png)
+
+Avec 10 rayons indirects générés aléatoirement par surface, on obtient le résultat ci-dessous en environ 10 secondes. L'image semble toujours bruitée mais le résultat est plus satisfaisant que le précédent.
+
+![raytracer_eclairage_indirect_10_rayons](Figures/raytracer_eclairage_indirect_10_rayons.png)
+
+Avec 100 rayons indirects générés aléatoirement par surface, on obtient le résultat ci-dessous en environ 100 secondes. On aperçoit encore légèrement le bruit même si le résultat est très satisfaisant.
+
+![raytracer_eclairage_indirect_100_rayons](Figures/raytracer_eclairage_indirect_100_rayons.png)
+
+Lorsque l'on compare ce résultat avec l'image sans éclairage indirect, on s'aperçoit entre autre que le sol, qui apparaissait blanc (sa couleur de définition), possède maintenant une teinte influencée par la couleur des murs qui l'entourent (bleu et rouge).
+
+L'image ci-dessous présente la combinaison de l'éclairage indirect et de la transmission de Fresnel au niveau de la sphère transparente, en combinant les méthodes aléatoires pour optimiser les calcules, on obtient le résultat en 80 secondes, 20 secondes de moins que précédemment.
+
+![raytracer_eclairage_indirect_100_rayons_Fresnel_aleatoires](Figures/raytracer_eclairage_indirect_100_rayons_Fresnel_aleatoires.png)
+
+### Parallélisation des calculs <a name="parallelisation"></a>
+
+Chaque pixel de l'image étant calculé de manière indépendante des autres pixels, on peut paralléliser la boucle de l'algorithme afin que les calculs soient exécutés en parallèle.
+
+En appliquant cette méthode, on parvient à réduire le temps d'exécution de notre algorithme à 10 secondes contre 80 secondes précédemment.
+
+### Crénelage <a name="crenelage"></a>
+
+Lorsque l'on observe une des images générées précédemment, on s'aperçoit que les bords des surfaces sont crénelés (en forme d'escalier).
+
+La raison de ce phénomène est que les rayons intersectent l'écran au milieu des pixels et deux rayons issues de deux pixels voisins peuvent, avec la distance entre l'écran et la surface, ne pas tout les deux appartenir à la surface ou inversement.
+
+Ainsi, pour supprimer ce crénelage, il convient de ne pas faire passer tout les rayons par le centre du pixel mais de les faire passer par un point du pixel de sorte à ce que la distribution des intersections des rayons sur le pixel suive une loi Gaussienne centrée sur le pixel.
+
+Les 100 rayons générés pour l'éclairage indirect sont ainsi utilisés avec des coordonnées légèrement différentes afin de d'augmenter la diversité des rayons.
+
+On obtient le résultat ci-dessous, le crénelage n'est plus visible.
+
+![raytracer_crenelage](Figures/raytracer_crenelage.png)
+
+## Feedback sur le MOS <a name="feedback"></a>
+
+- Points positifs :
+
+  - cours très intéressant
+  - le mélange de théorie et de mise en pratique simultané rend le travail très stimulant et l'évolution de l'image d'un modèle très simple à un modèle plus complexe rend le court d'autant plus motivant
+
+- Point négatif :
+  - la connaissance du C++ et des outils de développement est plus ou moins prise pour acquis, ce qui n'est pas le cas pour tout le monde.
