@@ -4,22 +4,29 @@
 
 I. [Ray Tracing](#raytracing)
 
-1. [Ray Tracing primitif](#raytracingprimitif)
-2. [Ajout de l'intensité lumineuse](#intensitelumineuse)
-3. [Création d'une scène](#scenecreation)
-4. [Correction Gamma](#correctiongamma)
-5. [Ombres portées](#ombresportees)
-6. [Surfaces miroir](#surfacesmiroir)
-7. [Surfaces transparents](#surfacestransparentes)
-8. [Transmission de Fresnel](#fresnel)
-9. [Eclairage indirect](#eclairageindirect)
+1.  [Ray Tracing primitif](#raytracingprimitif)
+2.  [Ajout de l'intensité lumineuse](#intensitelumineuse)
+3.  [Création d'une scène](#scenecreation)
+4.  [Correction Gamma](#correctiongamma)
+5.  [Ombres portées](#ombresportees)
+6.  [Surfaces miroir](#surfacesmiroir)
+7.  [Surfaces transparents](#surfacestransparentes)
+8.  [Transmission de Fresnel](#fresnel)
+9.  [Eclairage indirect](#eclairageindirect)
 
-   a) [Generation de nombre aléatoire](#randomnumber)
+    a) [Generation de nombre aléatoire](#randomnumber)
 
-   b) [Résultat de l'éclairage indirect](#resulteclairageindirect)
+    b) [Résultat de l'éclairage indirect](#resulteclairageindirect)
 
 10. [Parallélisation des calculs](#parallelisation)
 11. [Crénelage](#crenelage)
+12. [Ombres douces](#ombredouce)
+
+    a) [Approche naïve](#approchenaive)
+
+    b) [Approche intégrale](#approcheintegrale)
+
+13. [Changement du modèle de caméra](#changementcamera)
 
 II. [Feedback sur le MOS](#feedback)
 
@@ -79,7 +86,7 @@ Au lieu de donner une couleur blanche à un pixel dont un rayon serait entré en
 
 On calcule l'intensité de la lumière en un point P d'un objet selon la formule :
 
-I<sub>p</sub> = I/(4.&pi;.||**LP**||<sup>2</sup>) . .&lt;**N**,**PL**/||**PL**||&gt; . &rho; / &pi;
+I<sub>p</sub> = I/(4.&pi;.||**LP**||<sup>2</sup>) . &lt;**N**,**PL**/||**PL**||&gt; . &rho; / &pi;
 
 avec :
 
@@ -329,6 +336,94 @@ Les 100 rayons générés pour l'éclairage indirect sont ainsi utilisés avec d
 On obtient le résultat ci-dessous, le crénelage n'est plus visible.
 
 ![raytracer_crenelage](Figures/raytracer_crenelage.png)
+
+### Ombre douce <a name="ombredouce"></a>
+
+Jusqu'à présent, nous utilisions une source de lumière ponctuelle, qui émet dans toutes les directions de l'espace, pour éclairer la scène.
+
+Cela conduit notamment à des ombres très tranchées.
+Afin d'adoucir les ombres, on se propose ici de remplacer cette source ponctuelle par une **surface émissive**, une sphère par exemple.
+
+L'éclairage indirect n'est pas impacté par cette modification en revange l'éclairage indirect n'est calculé de la même manière.
+
+#### Approche naive <a name="approchenaive"></a>
+
+Dans une première approche dîtes naïve, on retire la source ponctuelle et on ne prend en compte que les reflets sur une surface émissive (sphère blanche) d'intensité lumineuse :
+
+I / 4 &pi;<sup>2</sup>R<sup>2</sup>
+
+Le résultat de l'approche naïve est présenté ci-dessous. Pour une surface émissive de rayon 5, l'image est très bruitée, le résultat est moins bon que précédemment. La source est visible dans le mirroir.
+
+![raytracer_naive_light](Figures/raytracerNaiveLight.png)
+
+En augmantant le rayon de la source ponctuelle à 15, le résultat est meilleur, l'image est moins bruitée.
+
+**Remarque** : on aperçoit la surface émissive en haut à gauche de l'image.
+
+![raytracer_naive_light_r15_without_punctual](Figures/raytracerNaiveLightR15WithoutPunctual.png)
+
+#### Approche intégrale <a name="approcheintegrale"></a>
+
+Quant il suffisait de viser la source ponctuelle avec un rayon pour calculer l'éclairage direct dans le modèle précédent, il s'agît à présent d'intégrer sur la demi-sphère de la surface émissive qui "voit" la surface éclairée.
+
+L'intégration sur cette demi-sphère se fait en discrétisant la surface en élément de surface tiré aléatoirement par une loi de Monte Carlo
+
+On peut alors réécrire l'**équation du rendu** en réalisant un changement de variable, on intègre sur les éléments d'air de la scène la quantité :
+
+&int; f(**w<sub>i</sub>**(x') , **w<sub>o</sub>**) . L(**w<sub>i</sub>**(x')) . cos(**&theta;<sub>i</sub>**) . J(x') . d<sub>x'</sub>
+
+avec J le **jacobien** tel que :
+
+J(x) = cos(&theta;') . V(x,x') / ||x-x'||<sup>2</sup>
+
+et :
+
+- V le **facteur de visibilité** (vaut 0 ou 1 selon que x' est visible depuis x)
+- cos(&theta;') = <**N'**-**w<sub>i</sub>**(x')>
+
+Afin d'améliorer le calcul de l'intégral, on réalise un **échantillage** des points de la surface. Grâce à la méthode de Monte Carlo, des points sont tirées aléatoirement selon une loi Gaussienne sur la demi-sphère de centre L, de rayon R et pointant vers x.
+
+On peut en déduire l'intensité lumineuse dû au point généré aléatoirement x' :
+
+I<sub>x'</sub> = I<sub>lum</sub>/(4.&pi;<sup>2</sup>.R<sup>2</sup>) . &rho; / &pi; . &lt;**N**,w<sub>i</sub>(x')&gt; . J / p(x')
+
+avec p(x') = &lt;**Lx**,**Lx'**&gt; / &pi;.R<sup>2</sup>
+
+Les Figures ci-dessous montrent les résultats de cette méthode.
+
+Les deux images ci-dessous montrent le résultat pour des surfaces émissives de rayon 1 et 15.
+
+![raytracer_light_r1](Figures/raytracerLightR1.png)
+
+![raytracer_light_r15](Figures/raytracerLightR15.png)
+
+Un léger bruit est toujours présent dû notamment aux approximations numériques qui reste des cas rares.
+
+En corrigeant le problème et toujours avec une source de rayon 1 on obtient un meilleur résultat ci-dessous.
+
+![raytracer_light_r1_without_noise](Figures/raytracerLightR1WithoutNoise.png)
+
+La Figure ci-dessous présente le résultat pour une surface émissive de rayon 5.
+On observe une **caustique** (zone où la lumière de la surface émissive est concentrée) sous la boule transparente.
+
+![raytracer_light_r5_final](Figures/raytracerLightR5_final.png)
+
+### Changement du modèle de caméra <a name="changementcamera"></a>
+
+La caméra utilisée initialement était une caméra fonctionnant comme un obturateur ponctuel. On modélise ici la caméra par un obturateur d'ouverture non ponctuel. Le point C représentant la caméra est maintenant une variable aléatoire Gaussienne centrée autour de C.
+
+Avec un tel dispositif, des objets qui ne sont pas à la même distance n'ont pas la même nêteté, cela dépend de la **profondeur de champ**. Les objets dont l'image arrive sur le capteur seront nets tandis que les autres objets seront plus flous à cause de la zone de confusion dû à l'obturateur.
+
+Afin de tester le nouveau type de caméra, on duplique les 3 sphères des images précédentes et on les place en arrière plan au dessus du sol.
+
+On obtient le résultat ci-dessous pour 100 rayons par pixel en environ 18 secondes.
+On remarque bien l'effet attendu de netteté relative et de profondeur de champ, toutefois l'image est légèrement bruitée.
+
+![raytracer_profondeur_champ_100_rays](Figures/raytracerProfondeurChamp100rays.png)
+
+On obtient en moins de 4 minutes la même image avec cette fois 1000 rayons par pixel. Le résultat est meilleur.
+
+![raytracer_profondeur_champ_1000_rays](Figures/raytracerProfondeurChamp1000rays.png)
 
 ## Feedback sur le MOS <a name="feedback"></a>
 

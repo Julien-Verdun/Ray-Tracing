@@ -193,7 +193,7 @@ public:
     std::vector<Sphere> objects;
     Vector L;
     double I;
-    bool intersect(const Ray &r, Vector &P, Vector &N, Vector &albedo, bool &mirror, bool &transp, double &t)
+    bool intersect(const Ray &r, Vector &P, Vector &N, Vector &albedo, bool &mirror, bool &transp, double &t, int &objectId)
     {
         t = 1E10;
         bool has_inter = false;
@@ -210,28 +210,38 @@ public:
                 N = localN;
                 mirror = objects[i].isMirror;
                 transp = objects[i].isTransparent;
+                objectId = i;
             }
         }
         return has_inter;
     };
 
-    Vector getColor(const Ray &r, int rebond)
+    Vector getColor(const Ray &r, int rebond, bool lastDiffuse)
     {
         double epsilon = 0.00001;
         Vector P, N, albedo;
         double t;
         bool mirror, transp;
-        bool inter = intersect(r, P, N, albedo, mirror, transp, t);
+        int objectId;
+        bool inter = intersect(r, P, N, albedo, mirror, transp, t, objectId);
         Vector color(0, 0, 0);
         if (rebond > 5)
             return Vector(0., 0., 0.);
         if (inter)
         {
+            if (objectId == 0)
+            {
+                if (rebond == 0 || !lastDiffuse)
+                {
+                    return Vector(I, I, I) / (4 * M_PI * M_PI * objects[0].R * objects[0].R);
+                }
+                return Vector(0., 0., 0.);
+            }
             if (mirror)
             {
                 Vector reflectedDir = r.u - 2 * dot(r.u, N) * N;
                 Ray reflectedRay(P + epsilon * N, reflectedDir);
-                return getColor(reflectedRay, rebond + 1);
+                return getColor(reflectedRay, rebond + 1, false);
             }
             else
             {
@@ -251,7 +261,7 @@ public:
                     {
                         Vector reflectedDir = r.u - 2 * dot(r.u, N) * N;
                         Ray reflectedRay(P + epsilon * N, reflectedDir);
-                        return getColor(reflectedRay, rebond + 1);
+                        return getColor(reflectedRay, rebond + 1, false);
                     }
 
                     double k0 = sqr(n1 - n2) / sqr(n1 + n2);
@@ -265,7 +275,7 @@ public:
                     {
                         Vector reflectedDir = r.u - 2 * dot(r.u, N) * N;
                         Ray reflectedRay(P + epsilon * N, reflectedDir);
-                        return getColor(reflectedRay, rebond + 1);
+                        return getColor(reflectedRay, rebond + 1, false);
                     }
                     else
                     {
@@ -273,7 +283,7 @@ public:
                         Vector tT = n1 / n2 * (r.u - dot(r.u, N2) * N2);
                         Vector tN = -sqrt(rad) * N2;
                         Vector refractedDir = tT + tN;
-                        return getColor(Ray(P - epsilon * N2, refractedDir), rebond + 1);
+                        return getColor(Ray(P - epsilon * N2, refractedDir), rebond + 1, false);
                     }
 
                     // Vector reflectedDir = r.u - 2 * dot(r.u, N) * N;
@@ -293,27 +303,54 @@ public:
                 }
                 else //eclairage direct
                 {
+                    // Vector PL = L - P;
+                    // double d = sqrt(PL.sqrNorm());
+                    // Vector shadowP, shadowN, shadowAlbedo;
+                    // double shadowt;
+                    // int objectId;
+                    // bool shadowMirror, shadowTransp;
+                    // Ray shadowRay(P + 0.00001 * N, PL / d);
+                    // bool shadowInter = intersect(shadowRay, shadowP, shadowN, shadowAlbedo, shadowMirror, shadowTransp, shadowt, objectId);
+                    // if (shadowInter && shadowt < d)
+                    // {
+                    //     color = Vector(0., 0., 0.);
+                    // }
+                    // else
+                    // {
+                    //     color = (I / (4 * M_PI * d * d)) * (albedo / M_PI) * std::max(0., dot(N, PL / d));
+                    // }
+
+                    // eclairage direct
+
                     Vector PL = L - P;
-                    double d = sqrt(PL.sqrNorm());
+                    PL = PL.get_normalized();
+                    Vector w = random_cos(-PL);
+                    Vector xprime = w * objects[0].R + objects[0].O;
+                    Vector Pxprime = xprime - P;
+                    double d = sqrt(Pxprime.sqrNorm());
+                    Pxprime = Pxprime / d;
+
                     Vector shadowP, shadowN, shadowAlbedo;
                     double shadowt;
+                    int objectId;
                     bool shadowMirror, shadowTransp;
-                    Ray shadowRay(P + 0.00001 * N, PL / d);
-                    bool shadowInter = intersect(shadowRay, shadowP, shadowN, shadowAlbedo, shadowMirror, shadowTransp, shadowt);
-                    if (shadowInter && shadowt < d)
+                    Ray shadowRay(P + 0.00001 * N, Pxprime);
+                    bool shadowInter = intersect(shadowRay, shadowP, shadowN, shadowAlbedo, shadowMirror, shadowTransp, shadowt, objectId);
+                    if (shadowInter && shadowt < d - 0.0001)
                     {
                         color = Vector(0., 0., 0.);
                     }
                     else
                     {
-                        color = (I / (4 * M_PI * d * d)) * (albedo / M_PI) * std::max(0., dot(N, PL / d));
+                        double proba = std::max(1E-8, dot(-PL, w)) / (M_PI * objects[0].R * objects[0].R);
+                        double J = std::max(0., dot(w, -Pxprime)) / (d * d);
+                        color = (I / (4 * M_PI * M_PI * objects[0].R * objects[0].R)) * (albedo / M_PI) * std::max(0., dot(N, Pxprime)) * J / proba;
                     }
 
                     // eclairage indirect
-
                     Vector wi = random_cos(N);
                     Ray wiRay(P + epsilon * N, wi);
-                    color += albedo * getColor(wiRay, rebond + 1);
+                    color += albedo * getColor(wiRay, rebond + 1, true);
                 }
             }
         }
@@ -389,6 +426,13 @@ int main()
 
     Vector C(0, 0, 55);
     Scene scene;
+    scene.I = 5E9;
+    scene.L = Vector(-10, 20, 40);
+
+    Sphere Slum(scene.L, 5, Vector(1., 1., 1.));
+    Sphere S4(Vector(-15, 30, -30), 10, Vector(0., 0., 1.));
+    Sphere S5(Vector(0, 30, -30), 10, Vector(1., 1., 1.), true);
+    Sphere S6(Vector(15, 30, -30), 10, Vector(1., 0., 0.), false, true);
     Sphere S1(Vector(-15, 0, 0), 10, Vector(0., 0., 1.));
     Sphere S2(Vector(0, 0, 0), 10, Vector(1., 1., 1.), true);
     Sphere S3(Vector(15, 0, 0), 10, Vector(1., 0., 0.), false, true);
@@ -398,6 +442,10 @@ int main()
     Sphere Smurde(Vector(0, 0, 1000), 940, Vector(1., 0., 1.));
     Sphere Ssol(Vector(0, -1000, 0), 990, Vector(1., 1., 1.), false);
     Sphere Splafond(Vector(0, 1000, 0), 990, Vector(1., 1., 1.));
+    scene.objects.push_back(Slum);
+    scene.objects.push_back(S4);
+    scene.objects.push_back(S5);
+    scene.objects.push_back(S6);
     scene.objects.push_back(S1);
     scene.objects.push_back(S2);
     scene.objects.push_back(S3);
@@ -409,8 +457,7 @@ int main()
     // scene.objects.push_back(Splafond);
 
     double fov = 60 * M_PI / 180;
-    scene.I = 5E9;
-    scene.L = Vector(-10, 20, 40);
+
     int nbrays = 100;
 
     std::vector<unsigned char> image(W * H * 3, 0);
@@ -428,11 +475,21 @@ int main()
                 double u1 = uniform(engine), u2 = uniform(engine);
                 double x1 = 0.25 * cos(2 * M_PI * u1) * sqrt(-2 * log(u2)),
                        x2 = 0.25 * sin(2 * M_PI * u1) * sqrt(-2 * log(u2));
+
+                double u3 = uniform(engine), u4 = uniform(engine);
+                double x3 = 1 * cos(2 * M_PI * u3) * sqrt(-2 * log(u4)),
+                       x4 = 1 * sin(2 * M_PI * u3) * sqrt(-2 * log(u4));
+
                 Vector u(j - W / 2 + x2 + 0.5, i - H / 2 + x1 + 0.5, -W / (2. * tan(fov / 2)));
                 u = u.get_normalized();
-                Ray r(C, u);
 
-                color += scene.getColor(r, 0);
+                Vector target = C + 55 * u;
+                Vector Cprime = C + Vector(x3, x4, 0);
+                Vector uprime = (target - Cprime).get_normalized();
+                // Ray r(C, u);
+                Ray r(Cprime, uprime);
+
+                color += scene.getColor(r, 0, false);
             }
 
             color = color / nbrays;
