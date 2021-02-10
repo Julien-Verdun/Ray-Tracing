@@ -28,6 +28,12 @@ I. [Ray Tracing](#raytracing)
 
 13. [Changement du modèle de caméra](#changementcamera)
 
+14. [Maillage](#maillage)
+
+    a) [Maillage naïf](#maillagenaif)
+
+    b) [Boîte englobante](#boiteenglobante)
+
 II. [Feedback sur le MOS](#feedback)
 
 Enseignant : Nicolas Bonneel
@@ -424,6 +430,106 @@ On remarque bien l'effet attendu de netteté relative et de profondeur de champ,
 On obtient en moins de 4 minutes la même image avec cette fois 1000 rayons par pixel. Le résultat est meilleur.
 
 ![raytracer_profondeur_champ_1000_rays](Figures/raytracerProfondeurChamp1000rays.png)
+
+## Maillage <a name="maillage"></a>
+
+Jusqu'à présent, les seuls objets représentés dans la scène était des sphères de centre et de rayon données. Afin de représenter d'autres types d'objets, rectangle, cylindre, voir même des formes complexes, un chien par exemple, il convient d'introduire la notion de **maillage** des surfaces.
+
+Le maillage d'une surface consiste à découper cette surface en triangle.
+
+Le maillage utilisé dans les exemples suivant est disponible [ici](https://free3d.com/fr/3d-model/australian-cattle-dog-v1--993323.html). C'est un maillage d'un chien.
+Le fichier téléchargé est porte l'extension **.obj**, il contient :
+
+- les sommets des triangles **v**
+- les normales aux sommets **vn**
+- les coordonnées de texture **vt**
+- les faces **f**.
+
+Le fichier `parserObj.cpp` permet de lire et traiter un fichier de maillage obj.
+
+### Maillage naïf <a name="maillagenaif"></a>
+
+La première méthode consiste à parcourir, pour chaque rayon de la scène, l'ensemble des triangles du maillage et renvoyer, s'il existe le plus proche triangle intersecté.
+
+Cette méthode augmente énormement le temps de calcul puisque le nombre de triangle à tester est très important (30000 pour le maillage de chien).
+
+L'intersection d'une maille (un triangle) avec un rayon se calcule grâce à l'**algorithme de Möller Trumbore**.
+
+L'ensemble des points P du triangle ABC peuvent être décrit par les coordonnées barycentrique &alpha;, &beta; et &gamma; (&alpha;, &beta;, &gamma; &ge; 0) tels que :
+
+P = &alpha; . A + &beta; . B + &gamma; . C avec : &alpha; + &beta; + &gamma; = 1
+
+ou encore :
+
+P = A + &beta; . **e<sub>1</sub>** + &gamma; . **e<sub>2</sub>**
+
+avec **e<sub>1</sub>** et **e<sub>2</sub>** les vecteurs dirigés par **AB** et **AC**
+
+et
+P = O + t . **u**
+
+ainsi : &beta; . **e<sub>1</sub>** + &gamma; . **e<sub>2</sub>** - t . **u** = O - A
+
+ou encore :
+
+[**e<sub>1</sub>** **e<sub>1</sub>** -**u**].[&beta; &gamma; t] = **OA**
+
+Ce dernier système d'équation se résout avec la **méthode de Kramer**, on obtient les solutions suivantes :
+
+---
+
+&beta; = - &lt; **e<sub>2</sub>**, **OA** &#10799; **u** &gt; / &lt; **u** , **N** &gt;
+
+&gamma; = - &lt; **e<sub>1</sub>**, **OA** &#10799; **u** &gt; / &lt; **u** , **N** &gt;
+
+t = - &lt; **OA** , **N** &gt; / &lt; **u** , **N** &gt;
+
+---
+
+L'algorithme est relativement efficace puisqu'il suffit de calculer une fois &lt; **OA** &#10799; **u** &gt; et &lt; **u** , **N** &gt; présent dans plusieurs équations.
+
+Les résultats pour ce maillage naïf sont représentés ci-dessous. On obtient, pour des images de tailles (128,128) et pour un seul rayon l'image ci-dessous en 45 secondes.
+
+Le résulat n'est pas très satisfaisant pour un temps d'attente relativement long.
+
+![raytracer_maillage_chien](Figures/raytracer_maillage_chien.PNG)
+
+L'image ci-dessous est la même que précédemment avec 5 rayons et un chien mirroir.
+
+![raytracer_maillage_chien_mirroir](Figures/raytracer_maillage_chien_mirroir.PNG)
+
+### Boîte englobante <a name="boiteenglobante"></a>
+
+La méthode de maillage naïve est très complexe en temps de calcul. Une manière simple de l'améliorer consiste à utiliser une **boîte englobante**.
+Il s'agit de la plus petite boîte entourant l'objet maillé.
+
+En effet, de nombreux rayons passent très loin de l'objet à mailler et pourtant, un test d'intersection est réalisé pour chaque maille de l'objet. L'amélioration proposée ici consiste à faire une première vérification pour vérifier que le rayon passe bien proche de l'objet.
+
+On construit donc une boîte englobante autour de l'objet, et on vérifie pour chaque rayon si il intersecte ou non cette boîte. si tel est le cas, on réalise les tests d'intersection pour les différentes mailles.
+
+La boîte englobante est décrite par 2 points, le point des minimums et le point des maximums des coordonnées des sommets selon x, y et z.
+
+On calcul ensuite l'intersection du rayon avec les 3 fois 2 plans de normales **x**, **y** et **z** constituant la boîte. Si l'intersection des intervalles formés par les intersections avec chacun de ces 2 plans est non vide, alors il y a intersection de la boîte.
+
+L'intersection entre un rayon et un peu plan est décrit par les équations suivantes, pour un plan contenant le point A, de normale **N**, un rayon passant par O et dirigé par **u**, les points P du plan sont décrit par :
+
+&lt; P-A , **N** &gt; = 0
+
+&lt; O + t . **u** - A , **N** &gt; = 0
+
+soit t = &lt; A-O , **N** &gt; / &lt; **u** , **N** &gt;
+
+On compare le maximum des cordonnées minimales et le minimal des coordonnées maximales des intersections afin de vérifier si la boîte est intersectée.
+
+On obtient les résultats présentés précédemment beaucoup plus rapidement. En 8 secondes pour une image (128,128) et un seul rayon contre 45 secondes avec la méthode naïve.
+
+Les images ci-dessous sont de format (256,256) et sont réalisées avec 10 et 30 rayons respectivement. Une boule miroir est placé au dessus du chien afin d'avoir une vision du chien de l'autre côté.
+
+Les résultats sont plutôt satisfaisant, toutefois les temps de calcul sont extrêmemnt longs avec 230 secondes (environ 4 minutes) pour 10 rayons et 730 secondes (environ 12 minutes) pour 30 rayons.
+
+![raytracer_maillage_chien_et_mirroir_10rays](Figures/raytracer_maillage_chien_et_mirroir_10rays.PNG)
+
+![raytracer_maillage_chien_et_mirroir_30rays](Figures/raytracer_maillage_chien_et_mirroir_30rays.PNG)
 
 ## Feedback sur le MOS <a name="feedback"></a>
 
