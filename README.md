@@ -492,11 +492,11 @@ Les résultats pour ce maillage naïf sont représentés ci-dessous. On obtient,
 
 Le résulat n'est pas très satisfaisant pour un temps d'attente relativement long.
 
-![raytracer_maillage_chien](Figures/raytracer_maillage_chien.PNG)
+![raytracer_maillage_chien](Figures/raytracer_maillage_chien.png)
 
 L'image ci-dessous est la même que précédemment avec 5 rayons et un chien mirroir.
 
-![raytracer_maillage_chien_mirroir](Figures/raytracer_maillage_chien_mirroir.PNG)
+![raytracer_maillage_chien_mirroir](Figures/raytracer_maillage_chien_mirroir.png)
 
 ### Boîte englobante <a name="boiteenglobante"></a>
 
@@ -527,9 +527,9 @@ Les images ci-dessous sont de format (256,256) et sont réalisées avec 10 et 30
 
 Les résultats sont plutôt satisfaisant, toutefois les temps de calcul sont extrêmemnt longs avec 230 secondes (environ 4 minutes) pour 10 rayons et 730 secondes (environ 12 minutes) pour 30 rayons.
 
-![raytracer_maillage_chien_et_mirroir_10rays](Figures/raytracer_maillage_chien_et_mirroir_10rays.PNG)
+![raytracer_maillage_chien_et_mirroir_10rays](Figures/raytracer_maillage_chien_et_mirroir_10rays.png)
 
-![raytracer_maillage_chien_et_mirroir_30rays](Figures/raytracer_maillage_chien_et_mirroir_30rays.PNG)
+![raytracer_maillage_chien_et_mirroir_30rays](Figures/raytracer_maillage_chien_et_mirroir_30rays.png)
 
 ## Feedback sur le MOS <a name="feedback"></a>
 
