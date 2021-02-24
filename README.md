@@ -34,6 +34,10 @@ I. [Ray Tracing](#raytracing)
 
     b) [Boîte englobante](#boiteenglobante)
 
+    c) [Maillage optimisé](#maillageoptimise)
+
+    d) [Optimisation des normales](#normalesoptimisees)
+
 II. [Feedback sur le MOS](#feedback)
 
 Enseignant : Nicolas Bonneel
@@ -525,11 +529,57 @@ On obtient les résultats présentés précédemment beaucoup plus rapidement. E
 
 Les images ci-dessous sont de format (256,256) et sont réalisées avec 10 et 30 rayons respectivement. Une boule miroir est placé au dessus du chien afin d'avoir une vision du chien de l'autre côté.
 
-Les résultats sont plutôt satisfaisant, toutefois les temps de calcul sont extrêmemnt longs avec 230 secondes (environ 4 minutes) pour 10 rayons et 730 secondes (environ 12 minutes) pour 30 rayons.
+Les résultats sont plutôt satisfaisant, toutefois les temps de calcul sont extrêmement longs.
+
+Image de 10 rayons par pixel en 230 secondes (environ 4 minutes) :
 
 ![raytracer_maillage_chien_et_mirroir_10rays](Figures/raytracer_maillage_chien_et_mirroir_10rays.png)
 
+Image de 30 rayons par pixel en 730 secondes (environ 12 minutes) :
+
 ![raytracer_maillage_chien_et_mirroir_30rays](Figures/raytracer_maillage_chien_et_mirroir_30rays.png)
+
+### Maillage optimisé <a name="maillageoptimise"></a>
+
+La méthode de la boîte englobante permet un gain de temps important. On se propose d'améliorer encore cette technique afin de réduire considérablement le temps de calcul.
+
+Le principe de cette optimisation est de **découper le maillage en sous-maillage** et d'appliquer à ces sous-maillages des boîtes englobantes. Ainsi, le volume total représenté par les boîtes sera plus faible que celui de la boîte englobante globale.
+
+En pratique, on créé une structure d'arbre binaire en divisant récursivement un maillage en 2 sous-maillage de taille égale. Cette structure porte le nom de **BVH Bounding Volume Hierarchy**.
+Les triangles sont ordonnés par indices selon le découpage du maillage ce qui facilite le stockage des triangles.
+
+Au moment de vérifier l'intersection d'un rayon avec le maillage, on parcours l'arbre BHV en profndeur afin de vérifier si une maille intersecte le rayon. Le gain de temps est considérable, si la boîte d'une sous-maille n'est pas intersecté par le rayon, toutes les sous-branches de l'arbre ne sont pas inspectées.
+
+On obtient pour une image de taille (256,256) avec un seul rayon par pixel l'image ci-dessous en environ **une seconde** contre plus de 20 secondes sans cette optimisation, soit un **gain de temps de d'un facteur 20**.
+
+![raytracer_maillage_optimise_20foisplusrapide_1ray](Figures/raytracer_maillage_optimise_20foisplusrapide_1ray.png)
+
+L'image ci-dessous est obtenue en enrion 37 secondes avec 100 rayons par pixels.
+
+![raytracer_maille_optimisee_100rays](Figures/raytracer_maille_optimisee_100rays.png)
+
+L'image ci-dessous, avec un chien couleur cyan, une image de taille (512,512) et 150 rayons par pixel est obtenue en environ 5 minutes (280 secondes).
+
+![raytracer_maille_optimise_150rays_cyan](Figures/raytracer_maille_optimise_150rays_cyan.png)
+
+### Optimisation des normales <a name="normalesoptimisees"></a>
+
+Jusqu'à présent les triangles partageant un même sommet possédaient tous la même normale en ce sommet, ce qui donne un aspect boule à facette à l'image.
+Afin d'améliorer le rendu, il est possible de donner une valeur différente à chacune des normales afin de donner un aspect plus lisse.
+
+La solution est pour cela de calculer une normale par triangle qui sera au point d'intersection rayon-triangle et une combinaison linéaire des normales à chaque sommet.
+
+Ainsi on obtient l'image ci-dessous, la différence avec l'image précédente est remarquable. On remarque que l'on ne discerne plus sur le dos du chien les mailles, le maillage semble plus lisse.
+
+![raytracer_maille_optimise_avec_normales_optimisees](Figures/raytracer_maille_optimise_avec_normales_optimisees.png)
+
+### Optimisation du parcours <a name="parcoursotpimisation"></a>
+
+Cette optimisation consiste à réduire encore le nombre de sous-branche de l'arbre BVH lors du parcours en profondeur. En effet, si une intersection dans une branche a été trouvée, il n'est pas nécessaire d'aller explorer la branche opposée si l'on sait que celle si est plus distante de la source de lumière. On gagne ainsi un grand nombre de test sur les rayons qui intersectent plusieurs sous-maillages.
+
+De plus, au lieu de commencer le parcours en profondeur de l'arbre BVH toujours par le fils gauche, il est possible de commencer par le fils le plus proche du rayon et ainsi maximiser ces chances de ne pas avoir à continuer la descente de l'autre branche de l'arbre (qui sera plus distante).
+
+Technique par encore implémenter.
 
 ## Feedback sur le MOS <a name="feedback"></a>
 

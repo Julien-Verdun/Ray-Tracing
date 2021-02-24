@@ -18,8 +18,10 @@
 
 #include <string>
 #include <stdio.h>
+#include <list>
 
-// lien vers canva3D https://www.cadnav.com/
+// lien vers canva3D https://www.cadnav.com/ telechargement impossible
+// https://free3d.com/fr/ marche mieux
 
 static std::default_random_engine engine(10);                // random seed = 10 // generateur de nombre aleatoire
 static std::uniform_real_distribution<double> uniform(0, 1); // generation d'une loi uniforme entre 0 et 1
@@ -185,6 +187,14 @@ public:
     Vector mini, maxi;
 };
 
+class Noeud
+{
+public:
+    Noeud *fg, *fd;
+    BoudingBox b;
+    int debut, fin;
+};
+
 class TriangleIndices
 {
 public:
@@ -204,20 +214,80 @@ public:
         this->albedo = albedo;
         isMirror = mirror;
         isTransparent = transp;
+        BVH = new Noeud;
     };
 
-    void buildBB()
+    BoudingBox buildBB(int debut, int fin) // debut et fin : indice de TRIANGLES
     {
+        BoudingBox bb;
         bb.mini = Vector(1E9, 1E9, 1E9);
         bb.maxi = Vector(-1E9, -1E9, -1E9);
-        for (int i = 0; i < vertices.size(); i++)
+        // for (int i = 0; i < vertices.size(); i++)
+        // {
+        for (int i = debut; i < fin; i++)
         {
             for (int j = 0; j < 3; j++)
             {
-                bb.mini[j] = std::min(bb.mini[j], vertices[i][j]);
-                bb.maxi[j] = std::max(bb.maxi[j], vertices[i][j]);
+                // bb.mini[j] = std::min(bb.mini[j], vertices[i][j]);
+                // bb.maxi[j] = std::max(bb.maxi[j], vertices[i][j]);
+                bb.mini[j] = std::min(bb.mini[j], vertices[indices[i].vtxi][j]);
+                bb.maxi[j] = std::max(bb.maxi[j], vertices[indices[i].vtxi][j]);
+                bb.mini[j] = std::min(bb.mini[j], vertices[indices[i].vtxj][j]);
+                bb.maxi[j] = std::max(bb.maxi[j], vertices[indices[i].vtxj][j]);
+                bb.mini[j] = std::min(bb.mini[j], vertices[indices[i].vtxk][j]);
+                bb.maxi[j] = std::max(bb.maxi[j], vertices[indices[i].vtxk][j]);
             }
         }
+        return bb;
+    }
+
+    void buildBVH(Noeud *n, int debut, int fin)
+    {
+        n->debut = debut;
+        n->fin = fin;
+        n->b = buildBB(n->debut, n->fin);
+
+        Vector diag = n->b.maxi - n->b.mini;
+        int dim; // dimension a diviser en 2
+        if (diag[0] >= diag[1] && diag[0] >= diag[2])
+        {
+            dim = 0;
+        }
+        else
+        {
+            if (diag[1] >= diag[0] && diag[1] >= diag[2])
+            {
+                dim = 1;
+            }
+            else
+            {
+                dim = 2;
+            }
+        }
+
+        double milieu = (n->b.mini[dim] + n->b.maxi[dim]) * 0.5; //milieu de la boite englobante selon la direction dim
+        int indice_pivot = n->debut;
+        for (int i = n->debut; i < n->fin; i++)
+        {
+            double milieu_triangle = (vertices[indices[i].vtxi][dim] + vertices[indices[i].vtxj][dim] + vertices[indices[i].vtxk][dim]) / 3;
+            if (milieu_triangle < milieu)
+            {
+                std::swap(indices[i], indices[indice_pivot]);
+                indice_pivot++;
+            }
+        }
+
+        n->fg = NULL;
+        n->fd = NULL;
+
+        if (indice_pivot == debut || indice_pivot == fin || fin - debut < 5)
+            return;
+
+        n->fg = new Noeud;
+        n->fd = new Noeud;
+
+        buildBVH(n->fg, n->debut, indice_pivot);
+        buildBVH(n->fd, indice_pivot, n->fin);
     }
 
     void readOBJ(const char *obj)
@@ -571,40 +641,93 @@ public:
 
     bool intersect(const Ray &r, Vector &P, Vector &normale, double &t)
     {
-        if (!bb.intersect(r))
+        if (!BVH->b.intersect(r))
             return false;
 
         t = 1E9;
         bool has_inter = false;
 
-        for (int i = 0; i < indices.size(); i++)
+        std::list<Noeud *> l;
+        l.push_back(BVH);
+        while (!l.empty())
         {
-            // calcul d'intersection
-            const Vector &A = vertices[indices[i].vtxi],
-                         &B = vertices[indices[i].vtxj],
-                         &C = vertices[indices[i].vtxk];
-            Vector e1 = B - A,
-                   e2 = C - A,
-                   N = cross(e1, e2),
-                   AO = r.C - A,
-                   AOu = cross(AO, r.u);
-            double invUN = 1. / dot(r.u, N);
-
-            double beta = -dot(e2, AOu) * invUN,
-                   gamma = dot(e1, AOu) * invUN,
-                   alpha = 1 - beta - gamma,
-                   localt = -dot(AO, N) * invUN;
-            if (beta >= 0 && gamma >= 0 && beta <= 1 && gamma <= 1 && alpha >= 0 && localt > 0)
+            Noeud *c = l.front();
+            l.pop_front();
+            if (c->fg)
             {
-                has_inter = true;
-                if (localt < t)
+                if (c->fg->b.intersect(r))
                 {
-                    t = localt;
-                    normale = N.get_normalized();
-                    P = r.C + r.u;
+                    l.push_front(c->fg);
+                }
+                if (c->fd->b.intersect(r))
+                {
+                    l.push_front(c->fd);
+                }
+            }
+            else
+            {
+
+                for (int i = c->debut; i < c->fin; i++)
+                {
+                    // calcul d'intersection
+                    const Vector &A = vertices[indices[i].vtxi],
+                                 &B = vertices[indices[i].vtxj],
+                                 &C = vertices[indices[i].vtxk];
+                    Vector e1 = B - A,
+                           e2 = C - A,
+                           N = cross(e1, e2),
+                           AO = r.C - A,
+                           AOu = cross(AO, r.u);
+                    double invUN = 1. / dot(r.u, N);
+
+                    double beta = -dot(e2, AOu) * invUN,
+                           gamma = dot(e1, AOu) * invUN,
+                           alpha = 1 - beta - gamma,
+                           localt = -dot(AO, N) * invUN;
+                    if (beta >= 0 && gamma >= 0 && beta <= 1 && gamma <= 1 && alpha >= 0 && localt > 0)
+                    {
+                        has_inter = true;
+                        if (localt < t)
+                        {
+                            t = localt;
+                            // normale = N.get_normalized();
+                            normale = alpha * normals[indices[i].ni] + beta * normals[indices[i].nj] + gamma * normals[indices[i].nk];
+                            normale = normale.get_normalized();
+                            P = r.C + r.u;
+                        }
+                    }
                 }
             }
         }
+
+        // for (int i = 0; i < indices.size(); i++)
+        // {
+        //     // calcul d'intersection
+        //     const Vector &A = vertices[indices[i].vtxi],
+        //                  &B = vertices[indices[i].vtxj],
+        //                  &C = vertices[indices[i].vtxk];
+        //     Vector e1 = B - A,
+        //            e2 = C - A,
+        //            N = cross(e1, e2),
+        //            AO = r.C - A,
+        //            AOu = cross(AO, r.u);
+        //     double invUN = 1. / dot(r.u, N);
+
+        //     double beta = -dot(e2, AOu) * invUN,
+        //            gamma = dot(e1, AOu) * invUN,
+        //            alpha = 1 - beta - gamma,
+        //            localt = -dot(AO, N) * invUN;
+        //     if (beta >= 0 && gamma >= 0 && beta <= 1 && gamma <= 1 && alpha >= 0 && localt > 0)
+        //     {
+        //         has_inter = true;
+        //         if (localt < t)
+        //         {
+        //             t = localt;
+        //             normale = N.get_normalized();
+        //             P = r.C + r.u;
+        //         }
+        //     }
+        // }
 
         return has_inter;
     };
@@ -615,6 +738,8 @@ public:
     std::vector<Vector> uvs;
     std::vector<Vector> vertexcolors;
     BoudingBox bb;
+
+    Noeud *BVH;
 };
 
 class Sphere : public Object
@@ -898,8 +1023,8 @@ void integrate4D()
 int main()
 {
     float ini_time = clock();
-    int W = 256;
-    int H = 256;
+    int W = 512;
+    int H = 512;
     // integrateCos();
     // integrate4D();
     // return 0;
@@ -922,10 +1047,19 @@ int main()
     Sphere Smurde(Vector(0, 0, 1000), 940, Vector(1., 0., 1.));
     Sphere Ssol(Vector(0, -1000, 0), 990, Vector(1., 1., 1.), false);
     Sphere Splafond(Vector(0, 1000, 0), 990, Vector(1., 1., 1.));
-    TriangleMesh m(Vector(1., 1., 1.), false, false);
+    TriangleMesh m(Vector(0., 1., 1.), false, false);
+    // TriangleMesh m2(Vector(1., 1., 1.), false, false);
     Sphere SMm(Vector(20, 20, -10), 10, Vector(1., 1., 1.), true);
+    Sphere STm(Vector(0, 0, 10), 10, Vector(1., 1., 1.), false, true);
     m.readOBJ("./chien/13463_Australian_Cattle_Dog_v3.obj");
+    // m2.readOBJ("./dumbell/10499_Dumbells_v1_L3.obj");
     // modifier les donnees pour rapeticer ou agrandir l'image
+    // for (int i = 0; i < m2.vertices.size(); i++)
+    // {
+    //     // m2.vertices[i][0] += 10;
+    //     // m2.vertices[i][1] += 5;
+    //     m2.vertices[i][2] = -m2.vertices[i][2];
+    // }
     for (int i = 0; i < m.vertices.size(); i++)
     {
         // inversion y et z
@@ -941,8 +1075,8 @@ int main()
         std::swap(m.normals[i][0], m.normals[i][2]);
         m.normals[i] = -m.normals[i];
     }
-
-    m.buildBB();
+    m.buildBVH(m.BVH, 0, m.indices.size());
+    // m.buildBB();
 
     scene.objects.push_back(&Slum);
     // scene.objects.push_back(&S4);
@@ -958,11 +1092,14 @@ int main()
     scene.objects.push_back(&Ssol);
     // scene.objects.push_back(&Splafond);
     scene.objects.push_back(&m);
+    // scene.objects.push_back(&m2);
     scene.objects.push_back(&SMm);
+
+    // scene.objects.push_back(&STm);
 
     double fov = 60 * M_PI / 180;
 
-    int nbrays = 1;
+    int nbrays = 10;
 
     std::vector<unsigned char> image(W * H * 3, 0);
 #pragma omp parallel for schedule(dynamic, 1)
