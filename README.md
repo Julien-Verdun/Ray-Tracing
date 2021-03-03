@@ -38,6 +38,10 @@ I. [Ray Tracing](#raytracing)
 
     d) [Optimisation des normales](#normalesoptimisees)
 
+15. [Textures](#textures)
+
+16. [Mouvement de la caméra](#mouvementcamera)
+
 II. [Feedback sur le MOS](#feedback)
 
 Enseignant : Nicolas Bonneel
@@ -580,6 +584,36 @@ Cette optimisation consiste à réduire encore le nombre de sous-branche de l'ar
 De plus, au lieu de commencer le parcours en profondeur de l'arbre BVH toujours par le fils gauche, il est possible de commencer par le fils le plus proche du rayon et ainsi maximiser ces chances de ne pas avoir à continuer la descente de l'autre branche de l'arbre (qui sera plus distante).
 
 Technique par encore implémenter.
+
+## Textures <a name="textures"></a>
+
+Les objets 3D, en particulier le chien représenté précédemment est fournit avec une image contenant les textures. De plus, le fichier obj contenant les mailles contient également pour chaque sommet de chaque triangle, des cordonnées correspondants au bout de texture dans l'image de rendu des textures.
+
+On utilise ensuite le fichier **stb_image** afin de charger la texture (**stbi_load**) et de l'appliquer au chien. L'image ci-dessus montre le résultat :
+
+![raytracer_texture_100rays](Figures/raytracer_texture_100rays.png)
+
+La correction gamma étant déjà appliquée aux textures, il faut prendre soin de mettre les valeurs de texture à la puissance 2,2 afin de ne pas cumuler 2 corrections gamma.
+
+On obtient un résultat plus proche du résultat attendu.
+
+![raytracer_texture_correctiongamma](Figures/raytracer_texture_correctiongamma.png)
+
+## Mouvement de la caméra <a name="mouvementcamera"></a>
+
+On améliore le rendu en donnant la possibilité à la caméra de bouger pas rapport à la scène.
+
+Les translations de la caméra nécessitent simplement de modifier les coordonnées du centre C de la caméra.
+
+Pour les rotations de caméra (rotation verticale et horizontale), on modifie les coordonnées des rayons émis en fonction des paramètres de rotation par rapport aux axes verticals et horizontals afin d'effectuer un **changement de base**.
+
+On obtient les deux images ci-dessous pour différents paramètres de centre de caméra et d'angles de rotation.
+
+**Remarque** : on a rajouté dans cette scène un autre objet (un **dumbell**).
+
+![raytracer_rotation_camera](Figures/raytracer_rotation_camera.png)
+
+![raytracer_rotation_camera2](Figures/raytracer_rotation_camera2.png)
 
 ## Feedback sur le MOS <a name="feedback"></a>
 
