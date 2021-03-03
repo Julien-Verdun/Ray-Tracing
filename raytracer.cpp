@@ -151,7 +151,7 @@ class Object
 {
 public:
     Object(){};
-    virtual bool intersect(const Ray &r, Vector &P, Vector &normale, double &t) = 0;
+    virtual bool intersect(const Ray &r, Vector &P, Vector &normale, double &t, Vector &color) = 0;
 
     Vector albedo;
     bool isMirror, isTransparent;
@@ -639,7 +639,7 @@ public:
         fclose(f);
     }
 
-    bool intersect(const Ray &r, Vector &P, Vector &normale, double &t)
+    bool intersect(const Ray &r, Vector &P, Vector &normale, double &t, Vector &color)
     {
         if (!BVH->b.intersect(r))
             return false;
@@ -694,6 +694,22 @@ public:
                             normale = alpha * normals[indices[i].ni] + beta * normals[indices[i].nj] + gamma * normals[indices[i].nk];
                             normale = normale.get_normalized();
                             P = r.C + r.u;
+                            int H = Htex[indices[i].group],
+                                W = Wtex[indices[i].group];
+                            Vector UV = alpha * uvs[indices[i].uvi] + beta * uvs[indices[i].uvj] + gamma * uvs[indices[i].uvk];
+                            UV = UV * Vector(W, H, 0);
+                            int uvx = UV[0] + 0.5;
+                            int uvy = UV[1] + 0.5;
+                            uvx = uvx % W;
+                            uvy = uvy % H;
+                            if (uvx < 0)
+                                uvx += W;
+                            if (uvy < 0)
+                                uvy += H;
+                            uvy = H - uvy - 1;
+                            color = Vector(std::pow(textures[indices[i].group][(uvy * W + uvx) * 3] / 255., 2.2),
+                                           std::pow(textures[indices[i].group][(uvy * W + uvx) * 3 + 1] / 255., 2.2),
+                                           std::pow(textures[indices[i].group][(uvy * W + uvx) * 3 + 2] / 255., 2.2));
                         }
                     }
                 }
@@ -732,11 +748,22 @@ public:
         return has_inter;
     };
 
+    void loadTexture(const char *filename)
+    {
+        int W, H, C;
+        unsigned char *texture = stbi_load(filename, &W, &H, &C, 3);
+        Wtex.push_back(W);
+        Htex.push_back(H);
+        textures.push_back(texture);
+    }
+
     std::vector<TriangleIndices> indices;
     std::vector<Vector> vertices;
     std::vector<Vector> normals;
     std::vector<Vector> uvs;
     std::vector<Vector> vertexcolors;
+    std::vector<unsigned char *> textures;
+    std::vector<int> Wtex, Htex;
     BoudingBox bb;
 
     Noeud *BVH;
@@ -751,13 +778,14 @@ public:
         this->isMirror = isMirror;
         this->isTransparent = isTransparent;
     }
-    bool intersect(const Ray &r, Vector &P, Vector &N, double &t)
+    bool intersect(const Ray &r, Vector &P, Vector &N, double &t, Vector &color)
     {
         // solves a*t^2 + b*t + c = 0
         double a = 1;
         double b = 2 * dot(r.u, r.C - O);
         double c = (r.C - O).sqrNorm() - R * R;
         double delta = b * b - 4 * a * c;
+        color = this->albedo;
 
         if (delta < 0)
         {
@@ -803,13 +831,13 @@ public:
         bool has_inter = false;
         for (int i = 0; i < objects.size(); i++)
         {
-            Vector localP, localN;
+            Vector localP, localN, localAlbedo;
             double localt;
-            if (objects[i]->intersect(r, localP, localN, localt) && localt < t)
+            if (objects[i]->intersect(r, localP, localN, localt, localAlbedo) && localt < t)
             {
                 t = localt;
                 has_inter = true;
-                albedo = objects[i]->albedo;
+                albedo = localAlbedo;
                 P = localP;
                 N = localN;
                 mirror = objects[i]->isMirror;
@@ -829,7 +857,7 @@ public:
         int objectId;
         bool inter = intersect(r, P, N, albedo, mirror, transp, t, objectId);
         Vector color(0, 0, 0);
-        if (rebond > 5)
+        if (rebond > 10) //5 normalement
             return Vector(0., 0., 0.);
         if (inter)
         {
@@ -1029,10 +1057,10 @@ int main()
     // integrate4D();
     // return 0;
 
-    Vector C(0, 0, 55);
+    Vector C(0, 30, 55);
     Scene scene;
     scene.I = 5E9;
-    scene.L = Vector(-10, 20, 40);
+    scene.L = Vector(-10, 50, 40);
 
     Sphere Slum(scene.L, 5, Vector(1., 1., 1.));
     Sphere S4(Vector(-15, 30, -30), 10, Vector(0., 0., 1.));
@@ -1048,25 +1076,39 @@ int main()
     Sphere Ssol(Vector(0, -1000, 0), 990, Vector(1., 1., 1.), false);
     Sphere Splafond(Vector(0, 1000, 0), 990, Vector(1., 1., 1.));
     TriangleMesh m(Vector(0., 1., 1.), false, false);
-    // TriangleMesh m2(Vector(1., 1., 1.), false, false);
+    TriangleMesh m2(Vector(1., 1., 1.), false, false);
+    TriangleMesh mtable(Vector(1., 1., 1.), false, false);
     Sphere SMm(Vector(20, 20, -10), 10, Vector(1., 1., 1.), true);
     Sphere STm(Vector(0, 0, 10), 10, Vector(1., 1., 1.), false, true);
     m.readOBJ("./chien/13463_Australian_Cattle_Dog_v3.obj");
-    // m2.readOBJ("./dumbell/10499_Dumbells_v1_L3.obj");
+    m.loadTexture("./chien/Australian_Cattle_Dog_dif.jpg");
+
+    m2.readOBJ("./dumbell/10499_Dumbells_v1_L3.obj");
+    m2.loadTexture("./dumbell/10499_Dumbells_v1_diffuse.jpg");
+
+    mtable.readOBJ("./table/table.obj");
+    mtable.loadTexture("./table/render 1.jpg");
     // modifier les donnees pour rapeticer ou agrandir l'image
-    // for (int i = 0; i < m2.vertices.size(); i++)
+    for (int i = 0; i < m2.vertices.size(); i++)
+    {
+        // O vers la droite 1 vers le haut 2 profondeur
+        m2.vertices[i][1] -= 5;
+        // m2.vertices[i][1] += 5;
+        m2.vertices[i][2] = -m2.vertices[i][2];
+        m2.vertices[i][2] += 20;
+    }
+    // for (int i = 0; i < mtable.vertices.size(); i++)
     // {
-    //     // m2.vertices[i][0] += 10;
-    //     // m2.vertices[i][1] += 5;
-    //     m2.vertices[i][2] = -m2.vertices[i][2];
+    //     mtable.vertices[i][0] -= 25;
+    //     mtable.vertices[i][2] = -mtable.vertices[i][2];
     // }
     for (int i = 0; i < m.vertices.size(); i++)
     {
+
         // inversion y et z
         std::swap(m.vertices[i][1], m.vertices[i][2]);
         // inversion x et z
         std::swap(m.vertices[i][0], m.vertices[i][2]);
-        // m.vertices[i][2] -= 10;
         m.vertices[i][1] -= 10;
     }
     for (int i = 0; i < m.vertices.size(); i++)
@@ -1076,6 +1118,8 @@ int main()
         m.normals[i] = -m.normals[i];
     }
     m.buildBVH(m.BVH, 0, m.indices.size());
+    m2.buildBVH(m2.BVH, 0, m2.indices.size());
+    // mtable.buildBVH(mtable.BVH, 0, mtable.indices.size());
     // m.buildBB();
 
     scene.objects.push_back(&Slum);
@@ -1092,14 +1136,24 @@ int main()
     scene.objects.push_back(&Ssol);
     // scene.objects.push_back(&Splafond);
     scene.objects.push_back(&m);
-    // scene.objects.push_back(&m2);
+    scene.objects.push_back(&m2);
+    // scene.objects.push_back(&mtable);
     scene.objects.push_back(&SMm);
 
     // scene.objects.push_back(&STm);
 
     double fov = 60 * M_PI / 180;
 
-    int nbrays = 10;
+    int nbrays = 5;
+    double angleVertical = -30 * M_PI / 180, angleHorizontal = 10 * M_PI / 180;
+    Vector up(0, cos(angleVertical), sin(angleVertical));
+    Vector right(cos(angleHorizontal), 0, sin(angleHorizontal));
+
+    double up0 = up[0];
+    up[0] = cos(angleHorizontal) * up[0] - sin(angleHorizontal) * up[2];
+    up[2] = sin(angleHorizontal) * up0 + cos(angleHorizontal) * up[2];
+
+    Vector viewDirection = cross(up, right);
 
     std::vector<unsigned char> image(W * H * 3, 0);
 #pragma omp parallel for schedule(dynamic, 1)
@@ -1121,8 +1175,9 @@ int main()
                 double x3 = 0.01 * cos(2 * M_PI * u3) * sqrt(-2 * log(u4)), // remettre à 1
                     x4 = 0.01 * sin(2 * M_PI * u3) * sqrt(-2 * log(u4));
 
-                Vector u(j - W / 2 + x2 + 0.5, i - H / 2 + x1 + 0.5, -W / (2. * tan(fov / 2)));
+                Vector u(j - W / 2 + x2 + 0.5, i - H / 2 + x1 + 0.5, W / (2. * tan(fov / 2)));
                 u = u.get_normalized();
+                u = u[0] * right + u[1] * up + u[2] * viewDirection;
 
                 Vector target = C + 55 * u;
                 Vector Cprime = C + Vector(x3, x4, 0);
