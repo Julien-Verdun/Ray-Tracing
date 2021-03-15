@@ -20,8 +20,8 @@
 #include <stdio.h>
 #include <list>
 
-// lien vers canva3D https://www.cadnav.com/ telechargement impossible
-// https://free3d.com/fr/ marche mieux
+// canva3D : https://www.cadnav.com/
+// free3D : https://free3d.com/fr/
 
 static std::default_random_engine engine(10);                // random seed = 10 // generateur de nombre aleatoire
 static std::uniform_real_distribution<double> uniform(0, 1); // generation d'une loi uniforme entre 0 et 1
@@ -694,22 +694,30 @@ public:
                             normale = alpha * normals[indices[i].ni] + beta * normals[indices[i].nj] + gamma * normals[indices[i].nk];
                             normale = normale.get_normalized();
                             P = r.C + r.u;
-                            int H = Htex[indices[i].group],
-                                W = Wtex[indices[i].group];
-                            Vector UV = alpha * uvs[indices[i].uvi] + beta * uvs[indices[i].uvj] + gamma * uvs[indices[i].uvk];
-                            UV = UV * Vector(W, H, 0);
-                            int uvx = UV[0] + 0.5;
-                            int uvy = UV[1] + 0.5;
-                            uvx = uvx % W;
-                            uvy = uvy % H;
-                            if (uvx < 0)
-                                uvx += W;
-                            if (uvy < 0)
-                                uvy += H;
-                            uvy = H - uvy - 1;
-                            color = Vector(std::pow(textures[indices[i].group][(uvy * W + uvx) * 3] / 255., 2.2),
-                                           std::pow(textures[indices[i].group][(uvy * W + uvx) * 3 + 1] / 255., 2.2),
-                                           std::pow(textures[indices[i].group][(uvy * W + uvx) * 3 + 2] / 255., 2.2));
+                            if (textures.size() > 0)
+                            {
+
+                                int H = Htex[indices[i].group],
+                                    W = Wtex[indices[i].group];
+                                Vector UV = alpha * uvs[indices[i].uvi] + beta * uvs[indices[i].uvj] + gamma * uvs[indices[i].uvk];
+                                UV = UV * Vector(W, H, 0);
+                                int uvx = UV[0] + 0.5;
+                                int uvy = UV[1] + 0.5;
+                                uvx = uvx % W;
+                                uvy = uvy % H;
+                                if (uvx < 0)
+                                    uvx += W;
+                                if (uvy < 0)
+                                    uvy += H;
+                                uvy = H - uvy - 1;
+                                color = Vector(std::pow(textures[indices[i].group][(uvy * W + uvx) * 3] / 255., 2.2),
+                                               std::pow(textures[indices[i].group][(uvy * W + uvx) * 3 + 1] / 255., 2.2),
+                                               std::pow(textures[indices[i].group][(uvy * W + uvx) * 3 + 2] / 255., 2.2));
+                            }
+                            else
+                            {
+                                color = albedo; // Vector(1., 1., 1.);
+                            }
                         }
                     }
                 }
@@ -755,6 +763,100 @@ public:
         Wtex.push_back(W);
         Htex.push_back(H);
         textures.push_back(texture);
+    }
+
+    void invertNormals()
+    {
+        for (int i = 0; i <= vertices.size(); i++)
+        {
+            normals[i] = -normals[i];
+        }
+    }
+
+    void translate(int dir, int dist)
+    {
+        if (dist != 0)
+        {
+
+            for (int i = 0; i <= vertices.size(); i++)
+            {
+                vertices[i][dir] += dist;
+            }
+        }
+        else
+        {
+
+            for (int i = 0; i <= vertices.size(); i++)
+            {
+                vertices[i][dir] = -vertices[i][dir];
+            }
+        }
+    }
+    void rotateNormals(int axe1, int axe2)
+    {
+        for (int i = 0; i <= vertices.size(); i++)
+        {
+            std::swap(normals[i][axe1], normals[i][axe2]);
+        }
+    }
+    void rotate(int axe1, int axe2)
+    {
+        for (int i = 0; i <= vertices.size(); i++)
+        {
+            std::swap(vertices[i][axe1], vertices[i][axe2]);
+        }
+    }
+
+    void rotateAroundAxe(int axe, double angle)
+    {
+        int axe1, axe2;
+        if (axe == 2)
+        {
+            axe1 = 0;
+            axe2 = 1;
+        }
+        else
+        {
+            if (axe == 1)
+            {
+                axe1 = 0;
+                axe2 = 2;
+            }
+            else
+            {
+                axe1 = 1;
+                axe2 = 2;
+            }
+        }
+        int axe1value;
+        for (int i = 0; i <= vertices.size(); i++)
+        {
+            axe1value = vertices[i][axe1];
+            vertices[i][axe1] = cos(angle * M_PI / 180) * axe1value - sin(angle * M_PI / 180) * vertices[i][axe2];
+            vertices[i][axe2] = sin(angle * M_PI / 180) * axe1value + cos(angle * M_PI / 180) * vertices[i][axe2];
+        }
+    }
+
+    void zoom(int zoomFacteur)
+    {
+        int meanX = 0, meanY = 0, meanZ = 0;
+        for (int i = 0; i <= vertices.size(); i++)
+        {
+            meanX += vertices[i][0];
+            meanY += vertices[i][1];
+            meanZ += vertices[i][2];
+        }
+        meanX /= meanX;
+        meanY /= meanY;
+        meanZ /= meanZ;
+        Vector center = Vector(meanX, meanY, meanZ);
+
+        for (int i = 0; i <= vertices.size(); i++)
+        {
+            vertices[i][0] = vertices[i][0] + zoomFacteur * (center * vertices[i])[0];
+            vertices[i][1] = vertices[i][1] + zoomFacteur * (center * vertices[i])[1];
+            vertices[i][2] = vertices[i][2] + zoomFacteur * (center * vertices[i])[2];
+        }
     }
 
     std::vector<TriangleIndices> indices;
@@ -1051,15 +1153,15 @@ void integrate4D()
 int main()
 {
     float ini_time = clock();
-    int W = 512;
-    int H = 512;
+    int W = 1024; //
+    int H = 1024; //512;
     // integrateCos();
     // integrate4D();
     // return 0;
 
     Vector C(0, 30, 55);
     Scene scene;
-    scene.I = 5E9;
+    scene.I = 6E9;
     scene.L = Vector(-10, 50, 40);
 
     Sphere Slum(scene.L, 5, Vector(1., 1., 1.));
@@ -1069,58 +1171,232 @@ int main()
     Sphere S1(Vector(-15, 0, 0), 10, Vector(0., 0., 1.));
     Sphere S2(Vector(0, 0, 0), 10, Vector(1., 1., 1.), true);
     Sphere S3(Vector(15, 0, 0), 10, Vector(1., 0., 0.), false, true);
-    Sphere Smurga(Vector(-1000, 0, 0), 970, Vector(0., 0., 1.));
-    Sphere Smurdr(Vector(1000, 0, 0), 970, Vector(1., 0., 0.));
-    Sphere Smurfa(Vector(0, 0, -1000), 940, Vector(0., 1., 0.));
-    Sphere Smurde(Vector(0, 0, 1000), 940, Vector(1., 0., 1.));
+    Sphere Smurga(Vector(-1050, 0, 0), 970, Vector(138 / 255., 168 / 255., 167 / 255.)); // Vector(0., 0., 1.));
+    Sphere Smurdr(Vector(1050, 0, 0), 970, Vector(138 / 255., 168 / 255., 167 / 255.));  // Vector(1., 0., 0.));
+    Sphere Smurfa(Vector(0, 0, -1050), 940, Vector(138 / 255., 168 / 255., 167 / 255.)); // Vector(0., 1., 0.));
+    Sphere Smurde(Vector(0, 0, 1000), 940, Vector(138 / 255., 168 / 255., 167 / 255.));  // Vector(1., 0., 1.));
     Sphere Ssol(Vector(0, -1000, 0), 990, Vector(1., 1., 1.), false);
     Sphere Splafond(Vector(0, 1000, 0), 990, Vector(1., 1., 1.));
     TriangleMesh m(Vector(0., 1., 1.), false, false);
-    TriangleMesh m2(Vector(1., 1., 1.), false, false);
-    TriangleMesh mtable(Vector(1., 1., 1.), false, false);
+    TriangleMesh m2(Vector(1., 0., 0.), false, false);
+    TriangleMesh m3(Vector(1., 1., 1.), false, false);
+    TriangleMesh mplane(Vector(16. / 255, 133. / 255, 49. / 255), false, false);
+    TriangleMesh mplanejapan(Vector(1., 0., 0.), false, false);
+    TriangleMesh mtank(Vector(0., 0., 1.), false, false);
+    TriangleMesh mtank2(Vector(0., 0., 1.), false, false);
+    TriangleMesh mtankpanzer(Vector(1., 0., 0.), false, false);
+    TriangleMesh mtankpanzer1(Vector(1., 0., 0.), false, false);
+    TriangleMesh mgresoldier(Vector(0., 0., 1.), false, false);
+    TriangleMesh mgresoldier1(Vector(0., 0., 1.), false, false);
+    TriangleMesh mrifsoldier(Vector(0., 0., 1.), false, false);
+    TriangleMesh mrifsoldier1(Vector(0., 0., 1.), false, false);
+    TriangleMesh mbazsoldier(Vector(0., 0., 1.), false, false);
+    TriangleMesh mbazsoldier1(Vector(0., 0., 1.), false, false);
     Sphere SMm(Vector(20, 20, -10), 10, Vector(1., 1., 1.), true);
     Sphere STm(Vector(0, 0, 10), 10, Vector(1., 1., 1.), false, true);
-    m.readOBJ("./chien/13463_Australian_Cattle_Dog_v3.obj");
-    m.loadTexture("./chien/Australian_Cattle_Dog_dif.jpg");
+    // m.readOBJ("./objects/chien/13463_Australian_Cattle_Dog_v3.obj");
+    // m.zoom(0.3);
+    // m.loadTexture("./objects/chien/Australian_Cattle_Dog_dif.jpg");
+    // // inversion y et z
+    // m.rotate(1, 2);
+    // // inversion x et z
+    // m.rotate(0, 2);
+    // m.translate(1, -10);
+    // m.invertNormals();
+    // m.rotateNormals(1, 2);
+    // m.rotateNormals(0, 2);
 
-    m2.readOBJ("./dumbell/10499_Dumbells_v1_L3.obj");
-    m2.loadTexture("./dumbell/10499_Dumbells_v1_diffuse.jpg");
+    // m2.readOBJ("./objects/dumbell/10499_Dumbells_v1_L3.obj");
+    // // O vers la droite 1 vers le haut 2 profondeur
+    // m2.translate(1, -5);
+    // m2.translate(2, 0);
+    // m2.translate(2, -20);
+    // m2.loadTexture("./objects/dumbell/10499_Dumbells_v1_diffuse.jpg");
 
-    mtable.readOBJ("./table/table.obj");
-    mtable.loadTexture("./table/render 1.jpg");
-    // modifier les donnees pour rapeticer ou agrandir l'image
-    for (int i = 0; i < m2.vertices.size(); i++)
-    {
-        // O vers la droite 1 vers le haut 2 profondeur
-        m2.vertices[i][1] -= 5;
-        // m2.vertices[i][1] += 5;
-        m2.vertices[i][2] = -m2.vertices[i][2];
-        m2.vertices[i][2] += 20;
-    }
-    // for (int i = 0; i < mtable.vertices.size(); i++)
+    // m3.readOBJ("./objects/dumbell/10499_Dumbells_v1_L3.obj");
+    // m3.loadTexture("./objects/dumbell/10499_Dumbells_v1_diffuse.jpg");
+    // m3.translate(0, -10);
+    // m3.translate(1, -5);
+    // m3.translate(2, 0); // inversion de l'axe
+
+    mgresoldier.readOBJ("./objects/soldiers/grenade_soldier/14073_WWII_Soldier_throwing_grenade_v2_L1.obj");
+    mgresoldier.loadTexture("./objects/soldiers/grenade_soldier/14073_WWII_Soldier_throwing_grenade_diff.jpg");
+    mgresoldier.zoom(10);
+    mgresoldier.rotate(1, 2);
+    mgresoldier.rotate(0, 2);
+    mgresoldier.translate(1, -10);
+    mgresoldier.rotateAroundAxe(1, -30);
+    mgresoldier.translate(0, 30);
+    mgresoldier.translate(2, -15);
+
+    mgresoldier1.readOBJ("./objects/soldiers/grenade_soldier/14073_WWII_Soldier_throwing_grenade_v2_L1.obj");
+    mgresoldier1.loadTexture("./objects/soldiers/grenade_soldier/14073_WWII_Soldier_throwing_grenade_diff.jpg");
+    mgresoldier1.zoom(10);
+    mgresoldier1.rotate(1, 2);
+    mgresoldier1.rotate(0, 2);
+    mgresoldier1.translate(0, 5);
+    mgresoldier1.translate(1, -10);
+    mgresoldier1.rotateAroundAxe(1, -40);
+    mgresoldier1.translate(0, 18);
+    mgresoldier1.translate(2, 13);
+
+    mrifsoldier.readOBJ("./objects/soldiers/rifle_soldier/14070_WWII_Soldier_with_Rife_v1_L1.obj");
+    mrifsoldier.loadTexture("./objects/soldiers/rifle_soldier/14070_WWII_Soldier_with_Rifle_diff.jpg");
+    mrifsoldier.zoom(4);
+    mrifsoldier.rotate(1, 2);
+    mrifsoldier.rotate(0, 2);
+    mrifsoldier.translate(1, -10);
+    mrifsoldier.rotateAroundAxe(1, -30);
+    mrifsoldier.translate(0, 25);
+    mrifsoldier.translate(2, -20);
+
+    mrifsoldier1.readOBJ("./objects/soldiers/rifle_soldier/14070_WWII_Soldier_with_Rife_v1_L1.obj");
+    mrifsoldier1.loadTexture("./objects/soldiers/rifle_soldier/14070_WWII_Soldier_with_Rifle_diff.jpg");
+    mrifsoldier1.zoom(4);
+    mrifsoldier1.rotate(1, 2);
+    mrifsoldier1.rotate(0, 2);
+    mrifsoldier1.translate(1, -10);
+    mrifsoldier1.rotateAroundAxe(1, -10);
+    mrifsoldier1.translate(0, 15);
+    mrifsoldier1.translate(2, 18);
+
+    mbazsoldier.readOBJ("./objects/soldiers/bazooka_soldier/14071_WWII_Soldier_with_Bazooka_v1_L1.obj");
+    mbazsoldier.loadTexture("./objects/soldiers/bazooka_soldier/14071_WWII_Soldier_with_Bazooka_diff.jpg");
+    mbazsoldier.zoom(4);
+    mbazsoldier.rotate(1, 2);
+    mbazsoldier.rotate(0, 2);
+    mbazsoldier.translate(1, -10);
+    mbazsoldier.rotateAroundAxe(1, -30);
+    mbazsoldier.translate(0, 20);
+    mbazsoldier.translate(2, -18);
+
+    mbazsoldier1.readOBJ("./objects/soldiers/bazooka_soldier/14071_WWII_Soldier_with_Bazooka_v1_L1.obj");
+    mbazsoldier1.loadTexture("./objects/soldiers/bazooka_soldier/14071_WWII_Soldier_with_Bazooka_diff.jpg");
+    mbazsoldier1.zoom(4);
+    mbazsoldier1.rotate(1, 2);
+    mbazsoldier1.rotate(0, 2);
+    mbazsoldier1.translate(1, -10);
+    mbazsoldier1.rotateAroundAxe(1, -10);
+    mbazsoldier1.translate(0, 28);
+    mbazsoldier1.translate(2, 15);
+
+    mplane.readOBJ("./objects/airplane/10593_Fighter_Jet_SG_v1_iterations-2.obj");
+    // mplane.loadTexture("./objects/airplane/10593_Fighter_Jet_SG_v1_diffuse.jpg");
+    mplane.zoom(0.8);
+    mplane.rotate(1, 2);
+    mplane.rotate(0, 2);
+    mplane.translate(1, 28); //15
+    mplane.translate(0, -15);
+    // mplane.translate(2, -10);
+    mplane.rotateAroundAxe(1, 30);
+    mplane.rotateAroundAxe(0, 15);
+
+    mplanejapan.readOBJ("./objects/airplane_japan/14082_WWII_Plane_Japan_Kawasaki_Ki-61_v1_L2.obj");
+    // mplanejapan.loadTexture("./objects/airplane_japan/14082_WWII_Plane_Japan_Kawasaki_Ki-61_diffuse_v1.jpg");
+    mplanejapan.zoom(4);
+    mplanejapan.rotate(1, 2);
+    mplanejapan.rotate(0, 2);
+    mplanejapan.rotateAroundAxe(1, -30);
+    // mplanejapan.rotateAroundAxe(0, 15);
+    mplanejapan.translate(1, 31); //15
+    mplanejapan.translate(0, 5);
+    mplanejapan.translate(2, 25);
+
+    mtank.readOBJ("./objects/tank/14078_WWII_Tank_Soviet_Union_T-70_v1_l2.obj");
+    mtank.loadTexture("./objects/tank/14078_WWII_Tank_Soviet_Union_T-70_hull_diff.jpg");
+    mtank.loadTexture("./objects/tank/14078_WWII_Tank_Soviet_Union_T-70_tracks_diff.jpg");
+    mtank.loadTexture("./objects/tank/14078_WWII_Tank_Soviet_Union_T-70_turret_diff.jpg");
+    mtank.zoom(4);
+    // mtank.translate(2, -10);
+    mtank.rotate(1, 2);
+    mtank.translate(1, -11);
+    mtank.rotate(0, 2);
+    mtank.translate(2, 0);
+    mtank.rotateAroundAxe(1, 70);
+    mtank.translate(0, 20);
+
+    mtank2.readOBJ("./objects/tank/14078_WWII_Tank_Soviet_Union_T-70_v1_l2.obj");
+    mtank2.loadTexture("./objects/tank/14078_WWII_Tank_Soviet_Union_T-70_hull_diff.jpg");
+    mtank2.loadTexture("./objects/tank/14078_WWII_Tank_Soviet_Union_T-70_tracks_diff.jpg");
+    mtank2.loadTexture("./objects/tank/14078_WWII_Tank_Soviet_Union_T-70_turret_diff.jpg");
+    mtank2.zoom(4);
+    mtank2.rotate(1, 2);
+    mtank2.rotate(0, 2);
+    mtank2.translate(2, 0);
+    mtank2.rotateAroundAxe(1, 95);
+    mtank2.translate(0, 25);
+    mtank2.translate(1, -11);
+    mtank2.translate(2, -30);
+
+    mtankpanzer.readOBJ("./objects/tank_panzer/14077_WWII_Tank_Germany_Panzer_III_v1_L2.obj");
+    mtankpanzer.loadTexture("./objects/tank_panzer/14077_WWII_Tank_Germany_Panzer_III_hull_diff.jpg");
+    mtankpanzer.loadTexture("./objects/tank_panzer/14077_WWII_Tank_Germany_Panzer_III_tracks_diff.jpg");
+    mtankpanzer.loadTexture("./objects/tank_panzer/14077_WWII_Tank_Germany_Panzer_III_turret_diff.jpg");
+    mtankpanzer.zoom(5);
+    mtankpanzer.rotate(1, 2);
+    mtankpanzer.rotate(0, 2);
+    mtankpanzer.translate(2, 0);
+    mtankpanzer.rotateAroundAxe(1, -60);
+    mtankpanzer.translate(1, -11);
+    mtankpanzer.translate(0, -20);
+    // mtankpanzer.translate(2, -20);
+
+    mtankpanzer1.readOBJ("./objects/tank_panzer/14077_WWII_Tank_Germany_Panzer_III_v1_L2.obj");
+    mtankpanzer1.loadTexture("./objects/tank_panzer/14077_WWII_Tank_Germany_Panzer_III_hull_diff.jpg");
+    mtankpanzer1.loadTexture("./objects/tank_panzer/14077_WWII_Tank_Germany_Panzer_III_tracks_diff.jpg");
+    mtankpanzer1.loadTexture("./objects/tank_panzer/14077_WWII_Tank_Germany_Panzer_III_turret_diff.jpg");
+    mtankpanzer1.zoom(5);
+    mtankpanzer1.rotate(1, 2);
+    mtankpanzer1.rotate(0, 2);
+    mtankpanzer1.translate(2, 0);
+    mtankpanzer1.rotateAroundAxe(1, -90);
+    mtankpanzer1.translate(1, -11);
+    mtankpanzer1.translate(0, -25);
+    mtankpanzer1.translate(2, -30);
+
+    // std::ofstream meanfile;
+
+    // meanfile.open("meanfile.txt");
+
+    // double meanM0 = 1., meanM1 = 1., meanM2 = 1.;
+
+    // for (int i = 0; i < m.vertices.size(); i++)
     // {
-    //     mtable.vertices[i][0] -= 25;
-    //     mtable.vertices[i][2] = -mtable.vertices[i][2];
+    //     meanM0 += m.vertices[i][0];
+    //     meanM1 += m.vertices[i][1];
+    //     meanM2 += m.vertices[i][2];
     // }
-    for (int i = 0; i < m.vertices.size(); i++)
-    {
+    // meanM0 = meanM0 / m.vertices.size();
+    // meanM1 = meanM1 / m.vertices.size();
+    // meanM2 = meanM2 / m.vertices.size();
 
-        // inversion y et z
-        std::swap(m.vertices[i][1], m.vertices[i][2]);
-        // inversion x et z
-        std::swap(m.vertices[i][0], m.vertices[i][2]);
-        m.vertices[i][1] -= 10;
-    }
-    for (int i = 0; i < m.vertices.size(); i++)
-    {
-        std::swap(m.normals[i][1], m.normals[i][2]);
-        std::swap(m.normals[i][0], m.normals[i][2]);
-        m.normals[i] = -m.normals[i];
-    }
-    m.buildBVH(m.BVH, 0, m.indices.size());
-    m2.buildBVH(m2.BVH, 0, m2.indices.size());
-    // mtable.buildBVH(mtable.BVH, 0, mtable.indices.size());
-    // m.buildBB();
+    // meanfile << "chien";
+    // meanfile << std::to_string(meanM0) + " ";
+    // meanfile << std::to_string(meanM1) + " ";
+    // meanfile << std::to_string(meanM2) + "\n";
+
+    // meanfile.close();
+
+    // buildBVH
+    // m.buildBVH(m.BVH, 0, m.indices.size());
+    // m2.buildBVH(m2.BVH, 0, m2.indices.size());
+    // m3.buildBVH(m3.BVH, 0, m3.indices.size());
+
+    mgresoldier.buildBVH(mgresoldier.BVH, 0, mgresoldier.indices.size());
+    mgresoldier1.buildBVH(mgresoldier1.BVH, 0, mgresoldier1.indices.size());
+
+    mrifsoldier.buildBVH(mrifsoldier.BVH, 0, mrifsoldier.indices.size());
+    mrifsoldier1.buildBVH(mrifsoldier1.BVH, 0, mrifsoldier1.indices.size());
+
+    mbazsoldier.buildBVH(mbazsoldier.BVH, 0, mbazsoldier.indices.size());
+    mbazsoldier1.buildBVH(mbazsoldier1.BVH, 0, mbazsoldier1.indices.size());
+
+    mplane.buildBVH(mplane.BVH, 0, mplane.indices.size());
+    mplanejapan.buildBVH(mplanejapan.BVH, 0, mplanejapan.indices.size());
+    mtank.buildBVH(mtank.BVH, 0, mtank.indices.size());
+    mtank2.buildBVH(mtank2.BVH, 0, mtank2.indices.size());
+    mtankpanzer.buildBVH(mtankpanzer.BVH, 0, mtankpanzer.indices.size());
+    mtankpanzer1.buildBVH(mtankpanzer1.BVH, 0, mtankpanzer1.indices.size());
 
     scene.objects.push_back(&Slum);
     // scene.objects.push_back(&S4);
@@ -1129,23 +1405,44 @@ int main()
     // scene.objects.push_back(&S1);
     // scene.objects.push_back(&S2);
     // scene.objects.push_back(&S3);
-    scene.objects.push_back(&Smurga);
-    scene.objects.push_back(&Smurdr);
-    scene.objects.push_back(&Smurfa);
-    // scene.objects.push_back(&Smurde);
-    scene.objects.push_back(&Ssol);
+
+    scene.objects.push_back(&Smurga); //
+    scene.objects.push_back(&Smurdr); //
+    scene.objects.push_back(&Smurfa); //
+    scene.objects.push_back(&Smurde);
+    scene.objects.push_back(&Ssol); //
     // scene.objects.push_back(&Splafond);
-    scene.objects.push_back(&m);
-    scene.objects.push_back(&m2);
-    // scene.objects.push_back(&mtable);
-    scene.objects.push_back(&SMm);
+    // chien
+    // scene.objects.push_back(&m);
+    // dumbell
+    // scene.objects.push_back(&m2);
+    // scene.objects.push_back(&m3);
+
+    scene.objects.push_back(&mgresoldier);
+    scene.objects.push_back(&mgresoldier1);
+
+    scene.objects.push_back(&mrifsoldier);
+    scene.objects.push_back(&mrifsoldier1);
+
+    scene.objects.push_back(&mbazsoldier);
+    scene.objects.push_back(&mbazsoldier1);
+    //* list of all objects
+    scene.objects.push_back(&mplane);
+    scene.objects.push_back(&mplanejapan);
+    scene.objects.push_back(&mtank);
+    scene.objects.push_back(&mtank2);
+    scene.objects.push_back(&mtankpanzer);
+    scene.objects.push_back(&mtankpanzer1);
+    //*/
+    // scene.objects.push_back(&SMm);
 
     // scene.objects.push_back(&STm);
 
     double fov = 60 * M_PI / 180;
 
-    int nbrays = 5;
-    double angleVertical = -30 * M_PI / 180, angleHorizontal = 10 * M_PI / 180;
+    int nbrays = 1;                          //2;
+    double angleVertical = -25 * M_PI / 180, //-30
+        angleHorizontal = 0 * M_PI / 180;    //10
     Vector up(0, cos(angleVertical), sin(angleVertical));
     Vector right(cos(angleHorizontal), 0, sin(angleHorizontal));
 
@@ -1172,7 +1469,7 @@ int main()
                        x2 = 0.25 * sin(2 * M_PI * u1) * sqrt(-2 * log(u2));
 
                 double u3 = uniform(engine), u4 = uniform(engine);
-                double x3 = 0.01 * cos(2 * M_PI * u3) * sqrt(-2 * log(u4)), // remettre à 1
+                double x3 = 0.01 * cos(2 * M_PI * u3) * sqrt(-2 * log(u4)), // remettre à 1 pour la profondeur de champ 0.01 pour l'enlever
                     x4 = 0.01 * sin(2 * M_PI * u3) * sqrt(-2 * log(u4));
 
                 Vector u(j - W / 2 + x2 + 0.5, i - H / 2 + x1 + 0.5, W / (2. * tan(fov / 2)));

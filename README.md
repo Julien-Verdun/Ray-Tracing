@@ -1,8 +1,22 @@
 # MOS 2.2 - Informatique Graphique
 
-## Table of contents
+Ce dépôt contient le code C++ implémentant un path-tracer. Les étapes d'évolution sont décrites ci-dessous et illustrées par des exemples.
+Le fichier `Rapport.md` contient le rapport simplifié, sans les explications théoriques.
 
-I. [Ray Tracing](#raytracing)
+Le rendu final du rapport est directement présenté ci-dessous :
+
+
+![raytracer_scenefinale_1000rays_1024](Figures/raytracer_scenefinale_v2_1000rays_1024.png)
+
+
+## Table des matières
+
+I. [Rendu final](#rendufinal)
+
+1.  [Garage à voitures](#garagevoiture)
+2.  [Scène de combat](#scenecombat)
+
+II. [Ray Tracing](#raytracing)
 
 1.  [Ray Tracing primitif](#raytracingprimitif)
 2.  [Ajout de l'intensité lumineuse](#intensitelumineuse)
@@ -10,7 +24,7 @@ I. [Ray Tracing](#raytracing)
 4.  [Correction Gamma](#correctiongamma)
 5.  [Ombres portées](#ombresportees)
 6.  [Surfaces miroir](#surfacesmiroir)
-7.  [Surfaces transparents](#surfacestransparentes)
+7.  [Surfaces transparentes](#surfacestransparentes)
 8.  [Transmission de Fresnel](#fresnel)
 9.  [Eclairage indirect](#eclairageindirect)
 
@@ -42,21 +56,97 @@ I. [Ray Tracing](#raytracing)
 
 16. [Mouvement de la caméra](#mouvementcamera)
 
-II. [Feedback sur le MOS](#feedback)
+III. [Feedback sur le MOS](#feedback)
 
-Enseignant : Nicolas Bonneel
+---
 
-Etudiant : Julien Verdun
+**Enseignant** : Nicolas Bonneel
 
-Date : 06/01/2021
+**Etudiant** : Julien Verdun
+
+**Dates** : du 6 janvier 2021 au 24 mars 2021
+
+---
+
+
+
+
+
+## Rendu final <a name="rendufinal"></a>
+
+
+### Garage à voitures <a name="garagevoiture"></a>
+
+
+La première idée de rendu final était une scène composée de plusieurs véhicules, rangés dans un garage.
+
+Plusieurs essais ont été réalisés avec notamment les deux modèles 3D suivant :
+- une Bugatti https://free3d.com/fr/3d-model/bugatti-chiron-2017-model-31847.html
+- un concept car https://free3d.com/fr/3d-model/3d-super-car-12832.html
+
+Malheureusement les résultats obtenus n'ont pas été concluant. Le facteur limitant est notamment le temps de calcul des images ci-dessous. 
+
+La bugatti a donné le rendu ci-dessous avec seulement un rayon par pixel en 4200 secondes, donc plus d'une heure. 
+
+
+![raytracer_bugatti_4200sec_1ray](Figures/raytracer_bugatti_4200sec_1ray.png)
+
+
+Le concept car a donné le rendu ci-dessous avec 3 rayons par pixel en 6000 secondes, donc presque 2 heures. 
+
+![raytracer_carconcept02_6000sec_3rays](Figures/raytracer_carconcept02_6000sec_3rays.png)
+
+Ainsi, le grand temps de calcul pour seulement un objet et très peu de rayons par pixel m'a décourager à créer une scène avec plusieurs objets et des centaines de rayons par pixel, le temps de calcul aurait été astronomique. 
+
+### Scène de combat <a name="scenecombat"></a>
+
+J'ai donc décidé en regardant les modèles disponibles en ligne de créer une scène de combat. 
+
+Les maillages des différents objets sont disponibles aux liens suivants : 
+- soldat avec grenade https://free3d.com/fr/3d-model/wwii-soldier-throwing-grenade-v2--322379.html
+- soldat avec bazooka https://free3d.com/fr/3d-model/wwii-soldier-with-bazooka-v1--231985.html
+- soldat avec mitraillette https://free3d.com/fr/3d-model/wwii-soldier-with-rifle-v1--175847.html
+- char Panzer https://free3d.com/fr/3d-model/wwii-tank-germany-panzer-iii-v1--870820.html
+- char soviétique https://free3d.com/fr/3d-model/wwii-tank-soviet-union-t70-v1--971170.html
+- avion japonais  https://free3d.com/fr/3d-model/wwii-plane-japan-kawasaki-ki61-v1--150484.html.
+
+
+J'ai réalisé des premiers rendus avec peu de rayons par pixel et une petite image (256 x 256) afin de placer les éléments dans la scène. 
+
+
+
+![raytracer_scenefinale_v1_200rays](Figures/raytracer_scenefinale_v1_200rays.png)
+
+Puis j'ai augmenté le nombre de rayons par pixel, ci-dessous une image avec 500 rayons calculée en 222 secondes (moins de 4 minutes).
+
+
+![raytracer_scenefinale_v2_500rays](Figures/raytracer_scenefinale_v2_500rays.png)
+
+L'image est encore très pixelisée malgré les 500 rayons, j'augmente donc la taille de l'image, en 512 x 512 ci-dessous :  
+
+![raytracer_scenefinale_v2_500rays_512](Figures/raytracer_scenefinale_v2_500rays_512.png)
+
+Rendu avec une image 1024 x 1024, 1 rayons par pixel, calculée en 12 secondes :
+
+
+![raytracer_scenefinale_v2_1ray_1024](Figures/raytracer_scenefinale_v2_1ray_1024.png)
+
+Dernier rendu avec une image 1024 x 1024, 1000 rayons par pixel, calculée en 7600 secondes soit plus de 2 heures :
+
+![raytracer_scenefinale_1000rays_1024](Figures/raytracer_scenefinale_v2_1000rays_1024.png)
+
+
+**Problèmes rencontrés** : les textures des avions ne se chargent pas, d'où les couleurs.
+
+
 
 ## Ray Tracing <a name="raytracing"></a>
 
-Le ray tracing est une technique de calcul d'optique par ordinateur, utilisée pour le rendu en synthèse d'image ou pour des études de systèmes optiques
+Le ray tracing est une technique de calcul optique par ordinateur, utilisée pour le rendu en synthèse d'image ou pour des études de systèmes optiques
 
-On décrit dans cette partie l'implémentation d'un algorithme de **Ray Tracing**. Les différentes étapes permettant de complexifier notre algorithme sont expliquées.
+On décrit dans cette partie l'implémentation d'un algorithme de **Ray Tracing**. Les différentes étapes permettant de complexifier notre algorithme sont expliquées dans les différentes sous-parties et sont illustrées à partir de scènes créées pour l'occasion.
 
-Le fichier `raytracer.cpp` contient les classes **C++** et le **main** nécessaires pour créer les images présentées plus bas.
+Le fichier `raytracer.cpp` contient les classes **C++** et la fonction **main** nécessaires pour créer les images présentées plus bas.
 
 ### Ray Tracing primitif <a name="raytracingprimitif"></a>
 
@@ -67,7 +157,7 @@ Une caméra est placée en un point C. Elle est composée d'une grille de pixels
 
 Dans un premier temps, on place une sphère devant la caméra. C'est une sphère de centre O et de rayon R.
 
-La démarche est la suivante. On trace des demi-droites partant du centre de la caméra C et dirigé par un vecteur **u**. Une demi-droite traverse la grille en un pixel, il y a donc W\*H demi-droites, passant par C et dirigée par le vecteur unitaire :
+La démarche est la suivante. On trace des demi-droites partant du centre de la caméra C et dirigées par un vecteur **u**. Une demi-droite traverse la grille en un pixel, il y a donc W\*H demi-droites, passant par C et dirigées par le vecteur unitaire :
 
 **u** = ( j-W/2, i-H/2, -W/(2.tan(&alpha;/2)))
 
@@ -108,26 +198,26 @@ avec :
 - **N** la normale à l'objet (la sphère) au point P (vecteur unitaire)
 - &rho; l'albédo de la sphère, i-e la fraction de la lumière que la sphère réfléchit.
 
-Ainsi on obtient la Figure représentée ci-dessous. La sphère, représentée avec un albedo rouge, est bien représentée en rouge et le reste en noir. On peut cette fois mieux apprécier le volume de la sphère et on peut clairement identifier la localisation de la source de lumière grâce aux différences d'intensiter lumineuses (les ombres sont mieux représentés). Ce raytracer est plus performant que la version précédente.
+Ainsi on obtient la Figure représentée ci-dessous. La sphère, représentée avec un albedo rouge, est bien représentée en rouge et le reste en noir. On peut cette fois mieux apprécier le volume de la sphère et on peut clairement identifier la localisation de la source de lumière grâce aux différences d'intensité lumineuse (les ombres sont mieux représentées). Ce raytracer est plus performant que celui de la version précédente.
 
 ![raytracer_avec_intensite](Figures/raytracer_avec_intensite.png)
 
 ### Création d'une scène <a name="scenecreation"></a>
 
-On désire à présent **complexifier la scène observée**. Jusqu'à présent, seul une sphère était placée devant la caméra.
+On désire à présent **complexifier la scène observée**. Jusqu'à présent, seule une sphère était placée devant la caméra.
 
 On implémente une classe **Scene** contenant un vecteur d'objets, qui contiendra les objets (par exemple des sphères) placés devant la caméra.
 
-Afin de bien représenter les objets les un par rapport aux autres, il convient de pouvoir déterminer leur profondeur dans l'espace. Ainsi pour réaliser cette modification, une méthode est implémentée afin de vérifier pour un rayon donné, les objets de la scène qui intercepte ce rayon, et de ne garder que l'objet le plus proche de la caméra (l'objet qui va cacher les objets derrière lui).
+Afin de bien représenter les objets les uns par rapport aux autres, il convient de pouvoir déterminer leur profondeur dans l'espace. Ainsi pour réaliser cette modification, une méthode est implémentée afin de vérifier pour un rayon donné, les objets de la scène qui interceptent ce rayon, et de ne garder que l'objet le plus proche de la caméra (l'objet qui va cacher les objets derrière lui).
 
 On réalise un essai en créant une scène composée de :
 
-- trois sphères, de gauche à droite bleue, blanche et rouge
+- trois sphères bleue, blanche et rouge (de gauche à droite)
 - 2 murs à gauche et à droite respectivement bleu et rouge
 - 2 murs en face de la caméra et derrière la caméra (invisible donc) respectivement vert et magenta
 - 1 mur au sol de couleur blanche.
 
-Les murs sont représentés par des sphéres de très grand rayon et de centre très éloigné.
+Les murs sont représentés par des sphères de très grand rayon et de centre très éloigné.
 Le résultat obtenu est présenté sur la Figure ci-dessous :
 
 ![raytracer_plusieurs_spheres](Figures/raytracer_plusieurs_spheres.png)
@@ -161,7 +251,7 @@ On obtient un premier résultat présenté sur la Figure ci-dessous. On remarque
 
 ![raytracer_shadow_and_noise](Figures/raytracer_shadow_and_noise.png)
 
-Le bruit s'explique par les incertitudes de calcul dû à la précision numérique de la machine. Ainsi, le point d'intersection se retrouve dans la surface au lieu d'être sur la surface. Pour éviter cela, on déplace le point d'intersection d'une petite quantité &epsilon; vers l'extérieur de l'objet.
+Le bruit s'explique par les incertitudes de calcul dûes à la précision numérique de la machine. Ainsi, le point d'intersection se retrouve dans la surface au lieu d'être sur la surface. Pour éviter cela, on déplace le point d'intersection d'une petite quantité &epsilon; vers l'extérieur de l'objet.
 
 Avec cette légère modification, on obtient le résultat présenté ci-dessous, le bruit n'est plus présent et les ombres sont bien visibles.
 
@@ -171,9 +261,9 @@ Avec cette légère modification, on obtient le résultat présenté ci-dessous,
 
 Les surfaces représentées jusqu'à présent sont des surfaces opaques qui possèdent un albédo. On se propose ici de représenter un autre type de surface, les **surfaces miroir**.
 
-Un rayon lumineux se reflète sur une telle surface avec un angle de réflexion par rapport à la normale de la surface égal à l'angle d'incidence. Les réflexions peuvent être multiples dans le cas de plusieurs surfaces miroir.
+Un rayon lumineux se reflète sur une telle surface avec un angle de réflexion par rapport à la normale de la surface égale à l'angle d'incidence. Les réflexions peuvent être multiples dans le cas de plusieurs surfaces miroir.
 
-On implémente ces types de surfaces en créant une fonction getColor récursive qui permet de donner la couleur entre l'intersection d'un rayon et d'une surface opaque, ou le cas écheant entre le rayon réfléchi et une surface miroir.
+On implémente ces types de surfaces en créant une fonction **getColor** récursive qui permet de donner la couleur entre l'intersection d'un rayon et d'une surface opaque ou le cas écheant entre le rayon réfléchi et une surface miroir.
 
 Avec cette propriété, notre **raytracer** devient un **pathtracer**.
 
@@ -191,7 +281,7 @@ On rencontre le même problème que précédemment, du bruit est présent sur la
 
 La sphère centrale permet bien de refléter le mur derrière l'écran, le mur magenta et les sphères et murs environnants.
 
-### Surfaces transparents <a name="surfacestransparentes"></a>
+### Surfaces transparentes <a name="surfacestransparentes"></a>
 
 On se propose ici de représenter un autre type de surface, les **surfaces transparentes**.
 
@@ -207,7 +297,7 @@ Grâce à cette loi, on peut exprimer les composantes tangentielle et normale du
 
 **T<sub>T</sub>** = n<sub>1</sub>/n<sub>2</sub> (**i** - <**i**,**N**>**N**)
 
-Connaissant la direction du rayon tranmis par la surface transparente, il est alors possible de connaître la couleure du pixel à afficher en cherchant l'intersection de ce rayon avec le reste de la scène.
+Connaissant la direction du rayon transmis par la surface transparente, il est alors possible de connaître la couleur du pixel à afficher en cherchant l'intersection de ce rayon avec le reste de la scène.
 
 On modifie la sphère de droite (sphère rouge) en une surface transparente. On obtient le résultat présenté sur la Figure ci-dessous. La sphère est bien transparente et laisse apparaître avec une inversion de la direction les murs de droite et du fond.
 
@@ -235,9 +325,9 @@ avec k<sub>0</sub> = (n<sub>1</sub>-n<sub>2</sub>)<sup>2</sup>/(n<sub>1</sub>+n<
 
 Pour implémenter la transmission de Fresnel, deux stratégies ont été testées.
 
-La **première stratégie** consiste à calculer la valeur d'un pixel transparent en faisant une moyenne pondérée par les coefficients R et T du rayon réfléchi et du rayon réfracté. L'inconvénient de cette méthode est son temps de calcul. En effet, la méthode de calcul de la couleur étant récursive, l'appeler 2 fois pour calculer la valeur d'un pixel transparent conduit à fait 2<sup>N</sup> calcul pour N rebonds, la complexité devient très vite importante.
+La **première stratégie** consiste à calculer la valeur d'un pixel transparent en faisant une moyenne pondérée par les coefficients R et T du rayon réfléchi et du rayon réfracté. L'inconvénient de cette méthode est son temps de calcul. En effet, la méthode de calcul de la couleur étant récursive, l'appeler 2 fois pour calculer la valeur d'un pixel transparent conduit à faire 2<sup>N</sup> calcul pour N rebonds, la complexité devient très vite importante (complexité exponentielle).
 
-Les résultats de cette méthode sont très concluants puisqu'en moins de 2 secondes, les deux images ci-dessous sont générées avec un rendu proche de la réalité.
+Les résultats de cette méthode sont très concluants puisqu'en moins de 2 secondes, les deux images ci-dessous sont générées avec un rendu proche de la réalité. Toutefois cette méthode n'est rapide que parce qu'il s'agît de formes très simples.
 
 ![raytracer_fresnel_gourmand](Figures/raytracer_fresnel_gourmand.png)
 
@@ -245,7 +335,7 @@ Les résultats de cette méthode sont très concluants puisqu'en moins de 2 seco
 
 La **deuxième stratégie** consiste à calculer la valeur d'un pixel transparent en faisant une moyenne de plusieurs chemins complets pour lesquels à chaque intersection avec une surface transparente, on choisit aléatoirement d'émettre un rayon réfléchi ou réfracté, en générant un nombre entre 0 et 1, et en le comparant au coefficient R. Si le nombre généré est inférieur à R, le rayon sera réfléchi, sinon il sera réfracté.
 
-Les résultats de cette méthode semble un peu moins performant. en effet, en générant et moyennant la valeur du pixel pour 30 rayons complets, on obtient le résultat ci-dessous. La qualité de la transparence est moins importante qu'avec la première méthode, on observe un léger bruit. De plus, le temps pour générer l'image est plus grand avec environ 6 secondes pour 10 rayons et 20 secondes pour 30 rayons.
+Les résultats de cette méthode semble un peu moins performant. En effet, en générant et moyennant la valeur du pixel pour 30 rayons complets, on obtient le résultat ci-dessous. La qualité de la transparence est moins importante qu'avec la première méthode, on observe un léger bruit. De plus, le temps pour générer l'image est plus grand avec environ 6 secondes pour 10 rayons et 20 secondes pour 30 rayons. Toutefois, on utilisera cette méthode par la suite car elle seta plus efficace pour des formes complexes.
 
 ![raytracer_fresnel_30_tirages](Figures/raytracer_fresnel_30_tirages.png)
 
@@ -286,7 +376,7 @@ avec :
 
 avec **z** dirigé par **N** puis
 
-**T1** est calculé selon la valeur minimale de **N** afin de s'assurer que l'on ait pas **N** = (0,0,1) et ainsi **T** = **0** :
+**T1** est calculé selon la valeur minimale de **N** afin de s'assurer que l'on n'ait pas **N** = (0,0,1) et ainsi **T** = **0** :
 
 - **T1** = (-N<sub>y</sub>,N<sub>x</sub>,0) si N<sub>z</sub> est minimale
 - **T1** = (N<sub>z</sub>,0,-N<sub>x</sub>) si N<sub>y</sub> est minimale
@@ -294,14 +384,13 @@ avec **z** dirigé par **N** puis
 
 et **T2** = **N**&#10799;**T1**
 
-Le calcul d'un seul rayon indirect par surface est amélioré en générant un certain nombre de rayons par pixel de l'écran, par exemple 100 rayons, qui se propagent différements (de manière aléatoire) et dont on moyenne les intensités lumineuses afin d'espérer obtenir l'intensité moyenne du pixel.
+Le calcul d'un seul rayon indirect par surface est amélioré en générant un certain nombre de rayons par pixel de l'écran, par exemple 100 rayons, qui se propagent différement (de manière aléatoire) et dont on moyenne les intensités lumineuses afin d'espérer obtenir l'intensité moyenne du pixel.
 
 #### Generation de nombre aléatoire <a name="randomnumber"></a>
 
 La génération de nombre aléatoire est réalisée en utilisant la **formule de Box Muller**.
 
-On génère deux nombres aléatoires u<sub>1</sub> et u<sub>2</sub> suivant une loi uniforme sur [0,1]
-puis on calcule deux nombres aléatoires :
+On génère deux nombres aléatoires u<sub>1</sub> et u<sub>2</sub> suivant une loi uniforme sur [0,1] puis on calcule deux nombres aléatoires :
 
 x<sub>1</sub> = &sigma; . cos(2 &pi; u<sub>1</sub>) . &radic;(-2 log(u<sub>2</sub>))
 
@@ -313,21 +402,21 @@ x<sub>1</sub> et x<sub>2</sub> suivent alors une loi Gaussienne d'écart-type &s
 
 Les résultats ci-dessous présentent le résultats de l'implémentation de l'éclairage indirect.
 
-Avec un seul rayon indirect généré aléatoirement par surface, on obtient le résultat ci-dessous en environ 1 seconde. L'image semble bruitée, le résultat n'est pas suffisament performant.
+Avec un seul rayon indirect généré aléatoirement par pixel, on obtient le résultat ci-dessous en environ 1 seconde. L'image semble bruitée, le résultat n'est pas suffisament performant.
 
 ![raytracer_eclairage_indirect_1_rayon](Figures/raytracer_eclairage_indirect_1_rayon.png)
 
-Avec 10 rayons indirects générés aléatoirement par surface, on obtient le résultat ci-dessous en environ 10 secondes. L'image semble toujours bruitée mais le résultat est plus satisfaisant que le précédent.
+Avec 10 rayons indirects générés aléatoirement par pixel, on obtient le résultat ci-dessous en environ 10 secondes. L'image semble toujours bruitée mais le résultat est plus satisfaisant que le précédent.
 
 ![raytracer_eclairage_indirect_10_rayons](Figures/raytracer_eclairage_indirect_10_rayons.png)
 
-Avec 100 rayons indirects générés aléatoirement par surface, on obtient le résultat ci-dessous en environ 100 secondes. On aperçoit encore légèrement le bruit même si le résultat est très satisfaisant.
+Avec 100 rayons indirects générés aléatoirement par pixel, on obtient le résultat ci-dessous en environ 100 secondes. On aperçoit encore légèrement le bruit même si le résultat est très satisfaisant.
 
 ![raytracer_eclairage_indirect_100_rayons](Figures/raytracer_eclairage_indirect_100_rayons.png)
 
 Lorsque l'on compare ce résultat avec l'image sans éclairage indirect, on s'aperçoit entre autre que le sol, qui apparaissait blanc (sa couleur de définition), possède maintenant une teinte influencée par la couleur des murs qui l'entourent (bleu et rouge).
 
-L'image ci-dessous présente la combinaison de l'éclairage indirect et de la transmission de Fresnel au niveau de la sphère transparente, en combinant les méthodes aléatoires pour optimiser les calcules, on obtient le résultat en 80 secondes, 20 secondes de moins que précédemment.
+L'image ci-dessous présente la combinaison de l'éclairage indirect et de la transmission de Fresnel au niveau de la sphère transparente, en combinant les méthodes aléatoires pour optimiser les calculs, on obtient le résultat en 80 secondes, 20 secondes de moins que précédemment.
 
 ![raytracer_eclairage_indirect_100_rayons_Fresnel_aleatoires](Figures/raytracer_eclairage_indirect_100_rayons_Fresnel_aleatoires.png)
 
@@ -345,7 +434,7 @@ La raison de ce phénomène est que les rayons intersectent l'écran au milieu d
 
 Ainsi, pour supprimer ce crénelage, il convient de ne pas faire passer tout les rayons par le centre du pixel mais de les faire passer par un point du pixel de sorte à ce que la distribution des intersections des rayons sur le pixel suive une loi Gaussienne centrée sur le pixel.
 
-Les 100 rayons générés pour l'éclairage indirect sont ainsi utilisés avec des coordonnées légèrement différentes afin de d'augmenter la diversité des rayons.
+Les 100 rayons générés pour l'éclairage indirect sont ainsi utilisés avec des coordonnées légèrement différentes afin d'augmenter la diversité des rayons.
 
 On obtient le résultat ci-dessous, le crénelage n'est plus visible.
 
@@ -356,9 +445,9 @@ On obtient le résultat ci-dessous, le crénelage n'est plus visible.
 Jusqu'à présent, nous utilisions une source de lumière ponctuelle, qui émet dans toutes les directions de l'espace, pour éclairer la scène.
 
 Cela conduit notamment à des ombres très tranchées.
-Afin d'adoucir les ombres, on se propose ici de remplacer cette source ponctuelle par une **surface émissive**, une sphère par exemple.
+Afin d'adoucir les ombres, on se propose ici de remplacer cette source ponctuelle par une **surface émissive**, une sphère par exemple, qui se rapproche plutôt bien d'une ampoule.
 
-L'éclairage indirect n'est pas impacté par cette modification en revange l'éclairage indirect n'est calculé de la même manière.
+L'éclairage indirect n'est pas impacté par cette modification. En revanche l'éclairage indirect n'est pas calculé de la même manière.
 
 #### Approche naive <a name="approchenaive"></a>
 
@@ -380,7 +469,7 @@ En augmantant le rayon de la source ponctuelle à 15, le résultat est meilleur,
 
 Quant il suffisait de viser la source ponctuelle avec un rayon pour calculer l'éclairage direct dans le modèle précédent, il s'agît à présent d'intégrer sur la demi-sphère de la surface émissive qui "voit" la surface éclairée.
 
-L'intégration sur cette demi-sphère se fait en discrétisant la surface en élément de surface tiré aléatoirement par une loi de Monte Carlo
+L'intégration sur cette demi-sphère se fait en discrétisant la surface en éléments de surface tirés aléatoirement par une loi de Monte Carlo.
 
 On peut alors réécrire l'**équation du rendu** en réalisant un changement de variable, on intègre sur les éléments d'air de la scène la quantité :
 
@@ -395,9 +484,9 @@ et :
 - V le **facteur de visibilité** (vaut 0 ou 1 selon que x' est visible depuis x)
 - cos(&theta;') = <**N'**-**w<sub>i</sub>**(x')>
 
-Afin d'améliorer le calcul de l'intégral, on réalise un **échantillage** des points de la surface. Grâce à la méthode de Monte Carlo, des points sont tirées aléatoirement selon une loi Gaussienne sur la demi-sphère de centre L, de rayon R et pointant vers x.
+Afin d'améliorer le calcul de l'intégral, on réalise un **échantillage** des points de la surface. Grâce à la méthode de Monte Carlo, des points sont tirés aléatoirement selon une loi Gaussienne sur la demi-sphère de centre L, de rayon R et pointant vers x.
 
-On peut en déduire l'intensité lumineuse dû au point généré aléatoirement x' :
+On peut en déduire l'intensité lumineuse dûe au point généré aléatoirement x' :
 
 I<sub>x'</sub> = I<sub>lum</sub>/(4.&pi;<sup>2</sup>.R<sup>2</sup>) . &rho; / &pi; . &lt;**N**,w<sub>i</sub>(x')&gt; . J / p(x')
 
@@ -411,7 +500,7 @@ Les deux images ci-dessous montrent le résultat pour des surfaces émissives de
 
 ![raytracer_light_r15](Figures/raytracerLightR15.png)
 
-Un léger bruit est toujours présent dû notamment aux approximations numériques qui reste des cas rares.
+Un léger bruit est toujours présent, il est dû notamment aux approximations numériques qui reste des cas rares.
 
 En corrigeant le problème et toujours avec une source de rayon 1 on obtient un meilleur résultat ci-dessous.
 
@@ -424,9 +513,9 @@ On observe une **caustique** (zone où la lumière de la surface émissive est c
 
 ### Changement du modèle de caméra <a name="changementcamera"></a>
 
-La caméra utilisée initialement était une caméra fonctionnant comme un obturateur ponctuel. On modélise ici la caméra par un obturateur d'ouverture non ponctuel. Le point C représentant la caméra est maintenant une variable aléatoire Gaussienne centrée autour de C.
+La caméra utilisée initialement était une caméra fonctionnant comme un obturateur ponctuel. On modélise ici la caméra par un obturateur d'ouverture non ponctuelle. Le point C représentant la caméra est maintenant une variable aléatoire Gaussienne centrée autour de C.
 
-Avec un tel dispositif, des objets qui ne sont pas à la même distance n'ont pas la même nêteté, cela dépend de la **profondeur de champ**. Les objets dont l'image arrive sur le capteur seront nets tandis que les autres objets seront plus flous à cause de la zone de confusion dû à l'obturateur.
+Avec un tel dispositif, des objets qui ne sont pas à la même distance n'ont pas la même nêteté, cela dépend de la **profondeur de champ**. Les objets dont l'image arrive sur le capteur seront nets tandis que les autres objets seront plus flous à cause de la zone de confusion, dûe à l'obturateur.
 
 Afin de tester le nouveau type de caméra, on duplique les 3 sphères des images précédentes et on les place en arrière plan au dessus du sol.
 
@@ -441,12 +530,12 @@ On obtient en moins de 4 minutes la même image avec cette fois 1000 rayons par 
 
 ## Maillage <a name="maillage"></a>
 
-Jusqu'à présent, les seuls objets représentés dans la scène était des sphères de centre et de rayon données. Afin de représenter d'autres types d'objets, rectangle, cylindre, voir même des formes complexes, un chien par exemple, il convient d'introduire la notion de **maillage** des surfaces.
+Jusqu'à présent, les seuls objets représentés dans la scène étaient des sphères de centre et de rayon données. Afin de représenter d'autres types d'objets, rectangle, cylindre, voir même des formes complexes, un chien par exemple, il convient d'introduire la notion de **maillage** des surfaces.
 
 Le maillage d'une surface consiste à découper cette surface en triangle.
 
-Le maillage utilisé dans les exemples suivant est disponible [ici](https://free3d.com/fr/3d-model/australian-cattle-dog-v1--993323.html). C'est un maillage d'un chien.
-Le fichier téléchargé est porte l'extension **.obj**, il contient :
+Le maillage utilisé dans les exemples suivants est disponible [ici](https://free3d.com/fr/3d-model/australian-cattle-dog-v1--993323.html). C'est un maillage d'un chien.
+Le fichier téléchargé porte l'extension **.obj**, il contient :
 
 - les sommets des triangles **v**
 - les normales aux sommets **vn**
@@ -457,9 +546,9 @@ Le fichier `parserObj.cpp` permet de lire et traiter un fichier de maillage obj.
 
 ### Maillage naïf <a name="maillagenaif"></a>
 
-La première méthode consiste à parcourir, pour chaque rayon de la scène, l'ensemble des triangles du maillage et renvoyer, s'il existe le plus proche triangle intersecté.
+La première méthode consiste à parcourir, pour chaque rayon de la scène, l'ensemble des triangles du maillage et de renvoyer, s'il existe le plus proche triangle intersecté.
 
-Cette méthode augmente énormement le temps de calcul puisque le nombre de triangle à tester est très important (30000 pour le maillage de chien).
+Cette méthode augmente énormement le temps de calcul puisque le nombre de triangle à tester est très important (30 000 pour le maillage de chien).
 
 L'intersection d'une maille (un triangle) avec un rayon se calcule grâce à l'**algorithme de Möller Trumbore**.
 
@@ -480,7 +569,7 @@ ainsi : &beta; . **e<sub>1</sub>** + &gamma; . **e<sub>2</sub>** - t . **u** = O
 
 ou encore :
 
-[**e<sub>1</sub>** **e<sub>1</sub>** -**u**].[&beta; &gamma; t] = **OA**
+[**e<sub>1</sub>** **e<sub>2</sub>** -**u**].[&beta; &gamma; t] = **OA**
 
 Ce dernier système d'équation se résout avec la **méthode de Kramer**, on obtient les solutions suivantes :
 
@@ -494,7 +583,7 @@ t = - &lt; **OA** , **N** &gt; / &lt; **u** , **N** &gt;
 
 ---
 
-L'algorithme est relativement efficace puisqu'il suffit de calculer une fois &lt; **OA** &#10799; **u** &gt; et &lt; **u** , **N** &gt; présent dans plusieurs équations.
+L'algorithme est relativement efficace puisqu'il suffit de calculer une fois &lt; **OA** &#10799; **u** &gt; et &lt; **u** , **N** &gt; présents dans plusieurs équations.
 
 Les résultats pour ce maillage naïf sont représentés ci-dessous. On obtient, pour des images de tailles (128,128) et pour un seul rayon l'image ci-dessous en 45 secondes.
 
@@ -513,13 +602,13 @@ Il s'agit de la plus petite boîte entourant l'objet maillé.
 
 En effet, de nombreux rayons passent très loin de l'objet à mailler et pourtant, un test d'intersection est réalisé pour chaque maille de l'objet. L'amélioration proposée ici consiste à faire une première vérification pour vérifier que le rayon passe bien proche de l'objet.
 
-On construit donc une boîte englobante autour de l'objet, et on vérifie pour chaque rayon si il intersecte ou non cette boîte. si tel est le cas, on réalise les tests d'intersection pour les différentes mailles.
+On construit donc une boîte englobante autour de l'objet, et on vérifie pour chaque rayon s'il intersecte ou non cette boîte. si tel est le cas, on réalise les tests d'intersection pour les différentes mailles.
 
 La boîte englobante est décrite par 2 points, le point des minimums et le point des maximums des coordonnées des sommets selon x, y et z.
 
-On calcul ensuite l'intersection du rayon avec les 3 fois 2 plans de normales **x**, **y** et **z** constituant la boîte. Si l'intersection des intervalles formés par les intersections avec chacun de ces 2 plans est non vide, alors il y a intersection de la boîte.
+On calcule ensuite l'intersection du rayon avec les 3 fois 2 plans de normales **x**, **y** et **z** constituant la boîte. Si l'intersection des intervalles formés par les intersections avec chacun de ces 2 plans est non vide, alors il y a intersection de la boîte.
 
-L'intersection entre un rayon et un peu plan est décrit par les équations suivantes, pour un plan contenant le point A, de normale **N**, un rayon passant par O et dirigé par **u**, les points P du plan sont décrit par :
+L'intersection entre un rayon et un plan est décrite par les équations suivantes, pour un plan contenant le point A, de normale **N**, un rayon passant par O et dirigé par **u**, les points P du plan sont décrits par :
 
 &lt; P-A , **N** &gt; = 0
 
@@ -531,15 +620,15 @@ On compare le maximum des cordonnées minimales et le minimal des coordonnées m
 
 On obtient les résultats présentés précédemment beaucoup plus rapidement. En 8 secondes pour une image (128,128) et un seul rayon contre 45 secondes avec la méthode naïve.
 
-Les images ci-dessous sont de format (256,256) et sont réalisées avec 10 et 30 rayons respectivement. Une boule miroir est placé au dessus du chien afin d'avoir une vision du chien de l'autre côté.
+Les images ci-dessous sont de format (256,256) et sont réalisées avec 10 et 30 rayons respectivement. Une boule miroir est placée au dessus du chien afin d'avoir une vision du chien de l'autre côté.
 
-Les résultats sont plutôt satisfaisant, toutefois les temps de calcul sont extrêmement longs.
+Les résultats sont plutôt satisfaisants, toutefois les temps de calcul sont extrêmement longs.
 
-Image de 10 rayons par pixel en 230 secondes (environ 4 minutes) :
+Image avec 10 rayons par pixel en 230 secondes (environ 4 minutes) :
 
 ![raytracer_maillage_chien_et_mirroir_10rays](Figures/raytracer_maillage_chien_et_mirroir_10rays.png)
 
-Image de 30 rayons par pixel en 730 secondes (environ 12 minutes) :
+Image avec 30 rayons par pixel en 730 secondes (environ 12 minutes) :
 
 ![raytracer_maillage_chien_et_mirroir_30rays](Figures/raytracer_maillage_chien_et_mirroir_30rays.png)
 
@@ -549,16 +638,16 @@ La méthode de la boîte englobante permet un gain de temps important. On se pro
 
 Le principe de cette optimisation est de **découper le maillage en sous-maillage** et d'appliquer à ces sous-maillages des boîtes englobantes. Ainsi, le volume total représenté par les boîtes sera plus faible que celui de la boîte englobante globale.
 
-En pratique, on créé une structure d'arbre binaire en divisant récursivement un maillage en 2 sous-maillage de taille égale. Cette structure porte le nom de **BVH Bounding Volume Hierarchy**.
+En pratique, on crée une structure d'arbre binaire en divisant récursivement un maillage en 2 sous-maillage de taille égale. Cette structure porte le nom de **BVH Bounding Volume Hierarchy**.
 Les triangles sont ordonnés par indices selon le découpage du maillage ce qui facilite le stockage des triangles.
 
-Au moment de vérifier l'intersection d'un rayon avec le maillage, on parcours l'arbre BHV en profndeur afin de vérifier si une maille intersecte le rayon. Le gain de temps est considérable, si la boîte d'une sous-maille n'est pas intersecté par le rayon, toutes les sous-branches de l'arbre ne sont pas inspectées.
+Au moment de vérifier l'intersection d'un rayon avec le maillage, on parcours l'arbre BHV en profondeur afin de vérifier si une maille intersecte le rayon. Le gain de temps est considérable, si la boîte d'une sous-maille n'est pas intersectée par le rayon, toutes les sous-branches de l'arbre ne sont pas inspectées.
 
-On obtient pour une image de taille (256,256) avec un seul rayon par pixel l'image ci-dessous en environ **une seconde** contre plus de 20 secondes sans cette optimisation, soit un **gain de temps de d'un facteur 20**.
+On obtient pour une image de taille (256,256) avec un seul rayon par pixel l'image ci-dessous en environ **une seconde** contre plus de 20 secondes sans cette optimisation, soit un **gain de temps d'un facteur 20**.
 
 ![raytracer_maillage_optimise_20foisplusrapide_1ray](Figures/raytracer_maillage_optimise_20foisplusrapide_1ray.png)
 
-L'image ci-dessous est obtenue en enrion 37 secondes avec 100 rayons par pixels.
+L'image ci-dessous est obtenue en environ 37 secondes avec 100 rayons par pixels.
 
 ![raytracer_maille_optimisee_100rays](Figures/raytracer_maille_optimisee_100rays.png)
 
@@ -581,13 +670,13 @@ Ainsi on obtient l'image ci-dessous, la différence avec l'image précédente es
 
 Cette optimisation consiste à réduire encore le nombre de sous-branche de l'arbre BVH lors du parcours en profondeur. En effet, si une intersection dans une branche a été trouvée, il n'est pas nécessaire d'aller explorer la branche opposée si l'on sait que celle si est plus distante de la source de lumière. On gagne ainsi un grand nombre de test sur les rayons qui intersectent plusieurs sous-maillages.
 
-De plus, au lieu de commencer le parcours en profondeur de l'arbre BVH toujours par le fils gauche, il est possible de commencer par le fils le plus proche du rayon et ainsi maximiser ces chances de ne pas avoir à continuer la descente de l'autre branche de l'arbre (qui sera plus distante).
+De plus, au lieu de commencer le parcours en profondeur de l'arbre BVH toujours par le fils gauche, il est possible de commencer par le fils le plus proche du rayon et ainsi maximiser ses chances de ne pas avoir à continuer la descente de l'autre branche de l'arbre (qui sera plus distante).
 
-Technique par encore implémenter.
+**Reamrque** : Technique non implémentée.
 
 ## Textures <a name="textures"></a>
 
-Les objets 3D, en particulier le chien représenté précédemment est fournit avec une image contenant les textures. De plus, le fichier obj contenant les mailles contient également pour chaque sommet de chaque triangle, des cordonnées correspondants au bout de texture dans l'image de rendu des textures.
+Les objets 3D, en particulier le chien représenté précédemment est fournit avec une image contenant les textures. De plus, le fichier obj contenant les mailles contient également pour chaque sommet de chaque triangle, des cordonnées correspondants aux coordonnées du triangle de texture dans l'image de rendu des textures.
 
 On utilise ensuite le fichier **stb_image** afin de charger la texture (**stbi_load**) et de l'appliquer au chien. L'image ci-dessus montre le résultat :
 
@@ -601,15 +690,15 @@ On obtient un résultat plus proche du résultat attendu.
 
 ## Mouvement de la caméra <a name="mouvementcamera"></a>
 
-On améliore le rendu en donnant la possibilité à la caméra de bouger pas rapport à la scène.
+On améliore le rendu en donnant la possibilité à la caméra de bouger par rapport à la scène.
 
 Les translations de la caméra nécessitent simplement de modifier les coordonnées du centre C de la caméra.
 
-Pour les rotations de caméra (rotation verticale et horizontale), on modifie les coordonnées des rayons émis en fonction des paramètres de rotation par rapport aux axes verticals et horizontals afin d'effectuer un **changement de base**.
+Pour les rotations de caméra (rotation verticale et horizontale), on modifie les coordonnées des rayons émis en fonction des paramètres de rotation par rapport aux axes vertical et horizontal afin d'effectuer un **changement de base**.
 
 On obtient les deux images ci-dessous pour différents paramètres de centre de caméra et d'angles de rotation.
 
-**Remarque** : on a rajouté dans cette scène un autre objet (un **dumbell**).
+**Remarque** : on a rajouté dans cette scène un autre objet (un **dumbell**, disponible gratuitement au téléchargement à cette adresse https://free3d.com/fr/3d-model/dumbells-v1--867151.html).
 
 ![raytracer_rotation_camera](Figures/raytracer_rotation_camera.png)
 
@@ -623,4 +712,5 @@ On obtient les deux images ci-dessous pour différents paramètres de centre de 
   - le mélange de théorie et de mise en pratique simultané rend le travail très stimulant et l'évolution de l'image d'un modèle très simple à un modèle plus complexe rend le court d'autant plus motivant
 
 - Point négatif :
-  - la connaissance du C++ et des outils de développement est plus ou moins prise pour acquis, ce qui n'est pas le cas pour tout le monde.
+  - la connaissance du C++ et des outils de développement est plus ou moins prise pour acquis, ce qui n'est pas le cas pour tout le monde
+  - parfois difficile de passer de la théorie à la pratique, par exemple après l'explication de la lumière indirecte qui est assez complexe, il est difficile de rapidement digérer ce qui a été expliqué et de faire le lien avec le code à modifier.
